@@ -1,39 +1,41 @@
 import { Request, Response, NextFunction } from 'express';
-import supabase from '../config/supabase';
+import supabaseAnon from '../config/supabase';
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
   user?: any;
 }
 
 export const authenticate = async (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response,
   next: NextFunction
-) => {
+): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
+      res.status(401).json({ 
         status: 'error', 
         message: 'Authentication required' 
       });
+      return;
     }
 
     const token = authHeader.split(' ')[1];
     
     // Verify the token with Supabase
-    const { data, error } = await supabase.auth.getUser(token);
+    const { data, error } = await supabaseAnon.auth.getUser(token);
     
     if (error || !data.user) {
-      return res.status(401).json({ 
+      res.status(401).json({ 
         status: 'error', 
         message: 'Invalid or expired token' 
       });
+      return;
     }
     
     // Attach the user to the request
-    req.user = data.user;
+    (req as AuthenticatedRequest).user = data.user;
     
     next();
   } catch (error) {
