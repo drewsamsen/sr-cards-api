@@ -13,6 +13,14 @@ A RESTful API built with TypeScript, Node.js, Express.js, PostgreSQL, and Supaba
 - Clean project structure
 - Local Supabase development environment
 
+## Documentation
+
+Detailed documentation is available in the [docs](./docs) directory:
+
+- [API Overview](./docs/api-overview.md)
+- [Project Structure](./docs/project-structure.md)
+- [Authentication](./docs/authentication.md)
+
 ## Project Structure
 
 ```
@@ -28,6 +36,7 @@ card-api/
 │   └── index.ts        # Application entry point
 ├── supabase/
 │   └── migrations/     # Database migrations
+├── docs/               # Documentation
 ├── .env                # Environment variables
 ├── .gitignore          # Git ignore file
 ├── package.json        # Project dependencies
