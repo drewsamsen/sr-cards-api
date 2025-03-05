@@ -4,8 +4,8 @@
  * 
  * Phase 2 of the setup process: Data seeding
  * This script:
- * 1. Creates a test user
- * 2. Creates sample decks for the test user
+ * 1. Creates two test users
+ * 2. Creates sample decks for each test user
  * 
  * IMPORTANT: The API server must be running before executing this script.
  */
@@ -51,6 +51,64 @@ function runCommand(command, description) {
   }
 }
 
+// Create a user with the given credentials
+async function createUser(email, password, fullName) {
+  try {
+    console.log(`${colors.yellow}→ Creating user ${email}...${colors.reset}`);
+    const response = await axios.post('http://localhost:3000/api/auth/register', {
+      email,
+      password,
+      fullName
+    });
+    console.log(`${colors.green}✓ User created: ${email}${colors.reset}`);
+    return response.data.data.user;
+  } catch (error) {
+    if (error.response && error.response.status === 409) {
+      console.log(`${colors.yellow}⚠ User ${email} already exists${colors.reset}`);
+      // Try to login to get the user data
+      try {
+        const loginResponse = await axios.post('http://localhost:3000/api/auth/login', {
+          email,
+          password
+        });
+        return loginResponse.data.data.user;
+      } catch (loginError) {
+        console.error(`${colors.red}✗ Could not login as existing user: ${email}${colors.reset}`);
+        return null;
+      }
+    } else {
+      console.error(`${colors.red}✗ Error creating user ${email}: ${error.message}${colors.reset}`);
+      return null;
+    }
+  }
+}
+
+// Create decks for a user
+async function createDecksForUser(token, decks) {
+  const results = [];
+  
+  for (const deck of decks) {
+    try {
+      console.log(`${colors.yellow}→ Creating deck "${deck.name}"...${colors.reset}`);
+      const response = await axios.post('http://localhost:3000/api/decks', deck, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log(`${colors.green}✓ Deck created: ${deck.name}${colors.reset}`);
+      results.push(response.data.data.deck);
+    } catch (error) {
+      if (error.response && error.response.status === 409) {
+        console.log(`${colors.yellow}⚠ Deck "${deck.name}" already exists${colors.reset}`);
+      } else {
+        console.error(`${colors.red}✗ Error creating deck "${deck.name}": ${error.message}${colors.reset}`);
+      }
+    }
+  }
+  
+  return results;
+}
+
 async function seedData() {
   try {
     // Check if the API server is running
@@ -63,22 +121,77 @@ async function seedData() {
 
     console.log(`${colors.green}✓ API server is running${colors.reset}`);
 
-    // Create test user
-    let userCreated = runCommand('node scripts/create-test-user.js', 'Creating test user');
-    if (!userCreated) {
-      console.warn(`${colors.yellow}⚠ Warning: Test user creation failed. User might already exist.${colors.reset}`);
+    // Create first test user
+    const user1 = await createUser(
+      'testuser1@example.com',
+      'password123',
+      'Test User One'
+    );
+    
+    if (user1) {
+      // Login to get token
+      const loginResponse1 = await axios.post('http://localhost:3000/api/auth/login', {
+        email: 'testuser1@example.com',
+        password: 'password123'
+      });
+      
+      const token1 = loginResponse1.data.data.token;
+      
+      // Create decks for first user
+      await createDecksForUser(token1, [
+        { 
+          name: 'JavaScript Fundamentals', 
+          description: 'Core concepts of JavaScript programming' 
+        },
+        { 
+          name: 'React Hooks', 
+          description: 'All about React hooks and their usage' 
+        },
+        { 
+          name: 'CSS Grid & Flexbox', 
+          description: 'Modern CSS layout techniques' 
+        }
+      ]);
     }
-
-    // Create sample decks
-    let decksCreated = runCommand('node scripts/create-sample-decks.js', 'Creating sample decks');
-    if (!decksCreated) {
-      console.warn(`${colors.yellow}⚠ Warning: Sample deck creation failed. Decks might already exist.${colors.reset}`);
+    
+    // Create second test user
+    const user2 = await createUser(
+      'testuser2@example.com',
+      'password123',
+      'Test User Two'
+    );
+    
+    if (user2) {
+      // Login to get token
+      const loginResponse2 = await axios.post('http://localhost:3000/api/auth/login', {
+        email: 'testuser2@example.com',
+        password: 'password123'
+      });
+      
+      const token2 = loginResponse2.data.data.token;
+      
+      // Create decks for second user
+      await createDecksForUser(token2, [
+        { 
+          name: 'TypeScript Basics', 
+          description: 'Introduction to TypeScript' 
+        },
+        { 
+          name: 'SQL Queries', 
+          description: 'Common SQL queries and patterns' 
+        },
+        { 
+          name: 'Git Commands', 
+          description: 'Essential Git commands for daily use' 
+        }
+      ]);
     }
 
     console.log(`\n${colors.green}${colors.bright}✓ Phase 2 setup completed successfully!${colors.reset}`);
-    console.log(`\n${colors.cyan}You can now use the API with:${colors.reset}`);
-    console.log(`  - Email: ${colors.cyan}testuser@example.com${colors.reset}`);
-    console.log(`  - Password: ${colors.cyan}password123${colors.reset}`);
+    console.log(`\n${colors.cyan}You can now use the API with either of these accounts:${colors.reset}`);
+    console.log(`  - Email: ${colors.cyan}testuser1@example.com${colors.reset}`);
+    console.log(`  - Email: ${colors.cyan}testuser2@example.com${colors.reset}`);
+    console.log(`  - Password: ${colors.cyan}password123${colors.reset} (same for both)`);
     
   } catch (error) {
     console.error(`\n${colors.red}${colors.bright}✗ Setup failed!${colors.reset}`);

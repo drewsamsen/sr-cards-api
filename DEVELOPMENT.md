@@ -146,23 +146,31 @@ The setup process is split into two phases:
    - Creates test users and sample data
    - Requires the API server to be running
    - Run with `npm run seed:data` after starting the server
+   - Creates two test users, each with their own decks
 
 This two-phase approach ensures that the API server is available when creating test data through the API endpoints.
 
 ### Test Users
 
-The default test user has the following credentials:
+The seed data script creates two test users with the following credentials:
 
-- **Email**: testuser@example.com
-- **Password**: password123
+- **User 1**:
+  - Email: testuser1@example.com
+  - Password: password123
+  - Decks: JavaScript Fundamentals, React Hooks, CSS Grid & Flexbox
 
-To create a test user manually:
+- **User 2**:
+  - Email: testuser2@example.com
+  - Password: password123
+  - Decks: TypeScript Basics, SQL Queries, Git Commands
+
+To create test users manually:
 
 ```bash
 npm run create:user
 ```
 
-To test logging in with the test user:
+To test logging in with a test user:
 
 ```bash
 npm run test:login
