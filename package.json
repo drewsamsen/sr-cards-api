@@ -12,13 +12,20 @@
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "supabase:status": "npx supabase status",
-    "supabase:studio": "open http://127.0.0.1:54323"
+    "supabase:studio": "open http://127.0.0.1:54323",
+    "setup": "node scripts/setup-dev.js",
+    "seed:data": "node scripts/seed-data.js",
+    "create:user": "node scripts/create-test-user.js",
+    "create:decks": "node scripts/create-sample-decks.js",
+    "test:login": "node scripts/login-test-user.js",
+    "seed:users": "node scripts/seed-users.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
+    "axios": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
