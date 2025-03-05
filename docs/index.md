@@ -7,6 +7,7 @@ Welcome to the Card API documentation. This documentation provides information a
 - [API Overview](./api-overview.md)
 - [Project Structure](./project-structure.md)
 - [Authentication](./authentication.md)
+- [Decks](./decks.md)
 
 ## Getting Started
 
@@ -18,6 +19,8 @@ The Card API currently provides the following features:
 
 - User authentication (registration, login, logout)
 - User profile management
+- Flashcard decks management with automatic slug generation
+- Unique deck names per user
 
 ## Contributing
 
