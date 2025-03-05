@@ -8,6 +8,7 @@ Welcome to the Card API documentation. This documentation provides information a
 - [Project Structure](./project-structure.md)
 - [Authentication](./authentication.md)
 - [Decks](./decks.md)
+- [Cards](./cards.md)
 - [Health Check](./health.md)
 
 ## Getting Started
@@ -22,6 +23,8 @@ The Card API currently provides the following features:
 - User profile management
 - Flashcard decks management with automatic slug generation
 - Unique deck names per user
+- Flashcard creation and management with learning status tracking
+- Spaced repetition review system for cards
 - Health check endpoint for monitoring and testing
 
 ## Contributing

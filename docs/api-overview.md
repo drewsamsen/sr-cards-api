@@ -92,9 +92,19 @@ The API does not currently implement versioning. Future versions may be accessed
 - `PUT /api/decks/:id`: Update a deck
 - `DELETE /api/decks/:id`: Delete a deck
 
+### Cards
+
+- `GET /api/decks/:deckId/cards`: Get all cards for a specific deck
+- `GET /api/cards/:id`: Get a specific card by ID
+- `POST /api/decks/:deckId/cards`: Create a new card in a deck
+- `PUT /api/cards/:id`: Update a card
+- `DELETE /api/cards/:id`: Delete a card
+- `GET /api/cards/review`: Get cards due for review
+
 For detailed information about each endpoint, refer to the specific documentation:
 - [Authentication](./authentication.md)
 - [Decks](./decks.md)
+- [Cards](./cards.md)
 - [Health Check](./health.md)
 
 ## Error Handling

@@ -6,6 +6,7 @@
  * This script:
  * 1. Creates two test users
  * 2. Creates sample decks for each test user
+ * 3. Adds sample cards to each deck
  * 
  * IMPORTANT: The API server must be running before executing this script.
  */
@@ -100,9 +101,45 @@ async function createDecksForUser(token, decks) {
     } catch (error) {
       if (error.response && error.response.status === 409) {
         console.log(`${colors.yellow}⚠ Deck "${deck.name}" already exists${colors.reset}`);
+        // Try to get the existing deck
+        try {
+          const getResponse = await axios.get(`http://localhost:3000/api/decks/slug/${deck.name.toLowerCase().replace(/\s+/g, '-')}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          results.push(getResponse.data.data.deck);
+        } catch (getError) {
+          console.error(`${colors.red}✗ Could not retrieve existing deck: ${deck.name}${colors.reset}`);
+        }
       } else {
         console.error(`${colors.red}✗ Error creating deck "${deck.name}": ${error.message}${colors.reset}`);
       }
+    }
+  }
+  
+  return results;
+}
+
+// Create cards for a deck
+async function createCardsForDeck(token, deckId, cards) {
+  const results = [];
+  
+  for (const card of cards) {
+    try {
+      console.log(`${colors.yellow}→ Creating card for deck ${deckId}...${colors.reset}`);
+      const response = await axios.post(`http://localhost:3000/api/decks/${deckId}/cards`, {
+        front: card.front,
+        back: card.back
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log(`${colors.green}✓ Card created${colors.reset}`);
+      results.push(response.data.data.card);
+    } catch (error) {
+      console.error(`${colors.red}✗ Error creating card: ${error.message}${colors.reset}`);
     }
   }
   
@@ -138,7 +175,7 @@ async function seedData() {
       const token1 = loginResponse1.data.data.token;
       
       // Create decks for first user
-      await createDecksForUser(token1, [
+      const user1Decks = await createDecksForUser(token1, [
         { 
           name: 'JavaScript Fundamentals', 
           description: 'Core concepts of JavaScript programming' 
@@ -152,6 +189,60 @@ async function seedData() {
           description: 'Modern CSS layout techniques' 
         }
       ]);
+      
+      // Add cards to JavaScript Fundamentals deck
+      if (user1Decks.length > 0) {
+        await createCardsForDeck(token1, user1Decks[0].id, [
+          {
+            front: "What is a closure in JavaScript?",
+            back: "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope."
+          },
+          {
+            front: "What is the difference between let and var?",
+            back: "let is block-scoped while var is function-scoped. let was introduced in ES6."
+          },
+          {
+            front: "What is a Promise?",
+            back: "A Promise is an object representing the eventual completion or failure of an asynchronous operation."
+          }
+        ]);
+      }
+      
+      // Add cards to React Hooks deck
+      if (user1Decks.length > 1) {
+        await createCardsForDeck(token1, user1Decks[1].id, [
+          {
+            front: "What is useState?",
+            back: "useState is a Hook that lets you add React state to function components."
+          },
+          {
+            front: "What is useEffect?",
+            back: "useEffect is a Hook that lets you perform side effects in function components."
+          },
+          {
+            front: "What is useContext?",
+            back: "useContext is a Hook that lets you subscribe to React context without introducing nesting."
+          }
+        ]);
+      }
+      
+      // Add cards to CSS Grid & Flexbox deck
+      if (user1Decks.length > 2) {
+        await createCardsForDeck(token1, user1Decks[2].id, [
+          {
+            front: "What is the main difference between Flexbox and Grid?",
+            back: "Flexbox is one-dimensional (row OR column) while Grid is two-dimensional (rows AND columns)."
+          },
+          {
+            front: "How do you center an element with Flexbox?",
+            back: "Use display: flex; justify-content: center; align-items: center; on the parent element."
+          },
+          {
+            front: "What is the fr unit in CSS Grid?",
+            back: "fr is a fractional unit that represents a fraction of the available space in the grid container."
+          }
+        ]);
+      }
     }
     
     // Create second test user
@@ -171,7 +262,7 @@ async function seedData() {
       const token2 = loginResponse2.data.data.token;
       
       // Create decks for second user
-      await createDecksForUser(token2, [
+      const user2Decks = await createDecksForUser(token2, [
         { 
           name: 'TypeScript Basics', 
           description: 'Introduction to TypeScript' 
@@ -185,6 +276,60 @@ async function seedData() {
           description: 'Essential Git commands for daily use' 
         }
       ]);
+      
+      // Add cards to TypeScript Basics deck
+      if (user2Decks.length > 0) {
+        await createCardsForDeck(token2, user2Decks[0].id, [
+          {
+            front: "What is TypeScript?",
+            back: "TypeScript is a strongly typed programming language that builds on JavaScript, giving you better tooling at any scale."
+          },
+          {
+            front: "What is an interface in TypeScript?",
+            back: "An interface is a way to define a contract on a function or object in TypeScript."
+          },
+          {
+            front: "What is the 'any' type?",
+            back: "The 'any' type is a type that disables type checking and effectively allows all types to be used."
+          }
+        ]);
+      }
+      
+      // Add cards to SQL Queries deck
+      if (user2Decks.length > 1) {
+        await createCardsForDeck(token2, user2Decks[1].id, [
+          {
+            front: "What is a JOIN in SQL?",
+            back: "A JOIN clause is used to combine rows from two or more tables, based on a related column between them."
+          },
+          {
+            front: "What is the difference between WHERE and HAVING?",
+            back: "WHERE filters rows before grouping, while HAVING filters groups after GROUP BY is applied."
+          },
+          {
+            front: "What is an INDEX in SQL?",
+            back: "An INDEX is a database structure that improves the speed of data retrieval operations on a database table."
+          }
+        ]);
+      }
+      
+      // Add cards to Git Commands deck
+      if (user2Decks.length > 2) {
+        await createCardsForDeck(token2, user2Decks[2].id, [
+          {
+            front: "What does 'git pull' do?",
+            back: "git pull fetches changes from a remote repository and merges them into the current branch."
+          },
+          {
+            front: "What is the difference between 'git merge' and 'git rebase'?",
+            back: "git merge creates a new commit that combines two branches, while git rebase moves or combines a sequence of commits to a new base commit."
+          },
+          {
+            front: "How do you create a new branch in Git?",
+            back: "Use 'git branch <branch-name>' to create a new branch, then 'git checkout <branch-name>' to switch to it. Or use 'git checkout -b <branch-name>' to do both in one command."
+          }
+        ]);
+      }
     }
 
     console.log(`\n${colors.green}${colors.bright}✓ Phase 2 setup completed successfully!${colors.reset}`);

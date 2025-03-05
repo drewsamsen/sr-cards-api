@@ -147,6 +147,7 @@ The setup process is split into two phases:
    - Requires the API server to be running
    - Run with `npm run seed:data` after starting the server
    - Creates two test users, each with their own decks
+   - Adds sample flashcards to each deck
 
 This two-phase approach ensures that the API server is available when creating test data through the API endpoints.
 
@@ -158,11 +159,13 @@ The seed data script creates two test users with the following credentials:
   - Email: testuser1@example.com
   - Password: password123
   - Decks: JavaScript Fundamentals, React Hooks, CSS Grid & Flexbox
+  - Each deck contains 3 sample flashcards
 
 - **User 2**:
   - Email: testuser2@example.com
   - Password: password123
   - Decks: TypeScript Basics, SQL Queries, Git Commands
+  - Each deck contains 3 sample flashcards
 
 To create test users manually:
 
@@ -193,6 +196,16 @@ npm run create:decks
 ```
 
 This will create several flashcard decks with different topics.
+
+### Sample Cards
+
+The seed data script automatically creates sample flashcards for each deck. Each deck will have 3 cards related to the deck's topic. For example:
+
+- JavaScript Fundamentals deck includes cards about closures, let vs var, and Promises
+- React Hooks deck includes cards about useState, useEffect, and useContext
+- SQL Queries deck includes cards about JOINs, WHERE vs HAVING, and INDEXes
+
+This provides a complete testing environment with realistic data for development.
 
 ## Troubleshooting
 
