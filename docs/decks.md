@@ -89,7 +89,7 @@ The following indexes are created for better performance:
 - Index on `user_id` for faster queries when retrieving a user's decks
 - Index on `slug` for faster lookups when accessing decks by slug
 
-## API Endpoints (Planned)
+## API Endpoints
 
 ### Decks
 
@@ -123,6 +123,7 @@ Authorization: Bearer <jwt-token>
   "data": {
     "deck": {
       "id": "uuid",
+      "userId": "user-uuid",
       "name": "JavaScript Basics",
       "slug": "javascript-basics",
       "description": "Flashcards for JavaScript fundamentals",
@@ -137,4 +138,6 @@ Authorization: Bearer <jwt-token>
 
 - Deck names must be unique per user
 - Slugs are automatically generated from the deck name
-- The `updated_at` timestamp is automatically updated when a deck is modified 
+- The `updated_at` timestamp is automatically updated when a deck is modified
+- API responses use camelCase for property names (JavaScript convention)
+- Database uses snake_case for column names (PostgreSQL convention) 

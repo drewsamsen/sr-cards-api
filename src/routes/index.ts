@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes';
+import deckRoutes from './deck.routes';
 
 const router = Router();
 
@@ -10,5 +11,8 @@ router.get('/health', (req, res) => {
 
 // Auth routes
 router.use('/auth', authRoutes);
+
+// Deck routes
+router.use('/decks', deckRoutes);
 
 export { router }; 
