@@ -6,6 +6,22 @@ import { asyncHandler } from '../utils';
 
 export const cardController = {
   /**
+   * Get all cards for the current user across all decks
+   */
+  getAllCards: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user.id;
+
+    const cards = await cardService.getAllCardsByUserId(userId);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        cards,
+      },
+    });
+  }),
+
+  /**
    * Get all cards for a deck
    */
   getCardsByDeckId: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {

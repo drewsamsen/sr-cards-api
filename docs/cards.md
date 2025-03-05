@@ -16,7 +16,8 @@ A card represents a flashcard with front and back content, belonging to a specif
   "status": "new | learning | review",
   "reviewAt": "timestamp | null",
   "createdAt": "timestamp",
-  "updatedAt": "timestamp"
+  "updatedAt": "timestamp",
+  "deckName": "string"
 }
 ```
 
@@ -30,6 +31,46 @@ Cards have three possible status values:
 ## API Endpoints
 
 All card endpoints require authentication.
+
+### Get All Cards for Current User
+
+```
+GET /api/cards
+```
+
+This endpoint returns all cards belonging to the current user across all decks.
+
+#### Request
+
+Headers:
+```
+Authorization: Bearer <token>
+```
+
+#### Response
+
+```json
+{
+  "status": "success",
+  "data": {
+    "cards": [
+      {
+        "id": "123e4567-e89b-12d3-a456-426614174000",
+        "userId": "123e4567-e89b-12d3-a456-426614174001",
+        "deckId": "123e4567-e89b-12d3-a456-426614174002",
+        "front": "What is a closure in JavaScript?",
+        "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
+        "status": "new",
+        "reviewAt": null,
+        "createdAt": "2023-01-01T00:00:00.000Z",
+        "updatedAt": "2023-01-01T00:00:00.000Z",
+        "deckName": "JavaScript Fundamentals"
+      },
+      // More cards...
+    ]
+  }
+}
+```
 
 ### Get All Cards for a Deck
 
@@ -60,7 +101,8 @@ Authorization: Bearer <token>
         "status": "new",
         "reviewAt": null,
         "createdAt": "2023-01-01T00:00:00.000Z",
-        "updatedAt": "2023-01-01T00:00:00.000Z"
+        "updatedAt": "2023-01-01T00:00:00.000Z",
+        "deckName": "JavaScript Fundamentals"
       },
       // More cards...
     ]
@@ -96,7 +138,8 @@ Authorization: Bearer <token>
       "status": "new",
       "reviewAt": null,
       "createdAt": "2023-01-01T00:00:00.000Z",
-      "updatedAt": "2023-01-01T00:00:00.000Z"
+      "updatedAt": "2023-01-01T00:00:00.000Z",
+      "deckName": "JavaScript Fundamentals"
     }
   }
 }
@@ -141,7 +184,8 @@ Body:
       "status": "new",
       "reviewAt": null,
       "createdAt": "2023-01-01T00:00:00.000Z",
-      "updatedAt": "2023-01-01T00:00:00.000Z"
+      "updatedAt": "2023-01-01T00:00:00.000Z",
+      "deckName": "JavaScript Fundamentals"
     }
   }
 }
@@ -186,7 +230,8 @@ Body:
       "status": "learning",
       "reviewAt": "2023-01-02T00:00:00.000Z",
       "createdAt": "2023-01-01T00:00:00.000Z",
-      "updatedAt": "2023-01-01T01:00:00.000Z"
+      "updatedAt": "2023-01-01T01:00:00.000Z",
+      "deckName": "JavaScript Fundamentals"
     }
   }
 }
@@ -252,7 +297,8 @@ limit: number (optional, default: 20) - Maximum number of cards to return
         "status": "new",
         "reviewAt": null,
         "createdAt": "2023-01-01T00:00:00.000Z",
-        "updatedAt": "2023-01-01T00:00:00.000Z"
+        "updatedAt": "2023-01-01T00:00:00.000Z",
+        "deckName": "JavaScript Fundamentals"
       },
       // More cards...
     ]
@@ -303,4 +349,5 @@ limit: number (optional, default: 20) - Maximum number of cards to return
 - Cards are always associated with both a user and a deck
 - The status field helps implement a spaced repetition system
 - The reviewAt field determines when a card should be reviewed next
-- Row Level Security (RLS) ensures users can only access their own cards 
+- Row Level Security (RLS) ensures users can only access their own cards
+- The deckName field is included in all card responses for convenience 

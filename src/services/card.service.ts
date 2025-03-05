@@ -4,12 +4,48 @@ import { snakeToCamelObject, camelToSnakeObject } from '../utils';
 
 export const cardService = {
   /**
+   * Get all cards for a user across all decks
+   */
+  async getAllCardsByUserId(userId: string): Promise<Card[]> {
+    const { data, error } = await supabaseAdmin
+      .from('cards')
+      .select(`
+        *,
+        decks:deck_id (
+          name
+        )
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    // Convert snake_case DB results to camelCase for API and add deck name
+    return (data || []).map(card => {
+      const cardWithDeckName = {
+        ...card,
+        deck_name: card.decks?.name
+      };
+      // Remove the nested decks object before converting
+      delete cardWithDeckName.decks;
+      return snakeToCamelObject(cardWithDeckName) as Card;
+    });
+  },
+
+  /**
    * Get all cards for a deck
    */
   async getCardsByDeckId(deckId: string, userId: string): Promise<Card[]> {
     const { data, error } = await supabaseAdmin
       .from('cards')
-      .select('*')
+      .select(`
+        *,
+        decks:deck_id (
+          name
+        )
+      `)
       .eq('deck_id', deckId)
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
@@ -18,8 +54,16 @@ export const cardService = {
       throw error;
     }
 
-    // Convert snake_case DB results to camelCase for API
-    return (data || []).map(card => snakeToCamelObject(card) as Card);
+    // Convert snake_case DB results to camelCase for API and add deck name
+    return (data || []).map(card => {
+      const cardWithDeckName = {
+        ...card,
+        deck_name: card.decks?.name
+      };
+      // Remove the nested decks object before converting
+      delete cardWithDeckName.decks;
+      return snakeToCamelObject(cardWithDeckName) as Card;
+    });
   },
 
   /**
@@ -28,7 +72,12 @@ export const cardService = {
   async getCardById(cardId: string, userId: string): Promise<Card | null> {
     const { data, error } = await supabaseAdmin
       .from('cards')
-      .select('*')
+      .select(`
+        *,
+        decks:deck_id (
+          name
+        )
+      `)
       .eq('id', cardId)
       .eq('user_id', userId)
       .single();
@@ -41,8 +90,18 @@ export const cardService = {
       throw error;
     }
 
+    if (!data) return null;
+
+    // Add deck name to the card object
+    const cardWithDeckName = {
+      ...data,
+      deck_name: data.decks?.name
+    };
+    // Remove the nested decks object before converting
+    delete cardWithDeckName.decks;
+    
     // Convert snake_case DB result to camelCase for API
-    return data ? snakeToCamelObject(data) as Card : null;
+    return snakeToCamelObject(cardWithDeckName) as Card;
   },
 
   /**
@@ -133,7 +192,12 @@ export const cardService = {
     
     const { data, error } = await supabaseAdmin
       .from('cards')
-      .select('*')
+      .select(`
+        *,
+        decks:deck_id (
+          name
+        )
+      `)
       .eq('user_id', userId)
       .or(`status.eq.new,and(status.eq.review,review_at.lte.${now})`)
       .limit(limit);
@@ -142,7 +206,15 @@ export const cardService = {
       throw error;
     }
 
-    // Convert snake_case DB results to camelCase for API
-    return (data || []).map(card => snakeToCamelObject(card) as Card);
+    // Convert snake_case DB results to camelCase for API and add deck name
+    return (data || []).map(card => {
+      const cardWithDeckName = {
+        ...card,
+        deck_name: card.decks?.name
+      };
+      // Remove the nested decks object before converting
+      delete cardWithDeckName.decks;
+      return snakeToCamelObject(cardWithDeckName) as Card;
+    });
   }
 }; 

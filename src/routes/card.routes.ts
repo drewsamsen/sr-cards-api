@@ -7,6 +7,9 @@ const router = Router();
 // All card routes require authentication
 router.use(authenticate);
 
+// Get all cards for the current user
+router.get('/', cardController.getAllCards);
+
 // Get cards due for review
 router.get('/review', cardController.getCardsForReview);
 

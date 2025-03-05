@@ -94,6 +94,7 @@ The API does not currently implement versioning. Future versions may be accessed
 
 ### Cards
 
+- `GET /api/cards`: Get all cards for the current user
 - `GET /api/decks/:deckId/cards`: Get all cards for a specific deck
 - `GET /api/cards/:id`: Get a specific card by ID
 - `POST /api/decks/:deckId/cards`: Create a new card in a deck
