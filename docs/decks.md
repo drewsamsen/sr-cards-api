@@ -102,6 +102,95 @@ The following indexes are created for better performance:
 
 ## Request and Response Examples
 
+### Get All Decks
+
+**Request:**
+```http
+GET /api/decks
+Authorization: Bearer <jwt-token>
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "data": {
+    "decks": [
+      {
+        "id": "uuid-1",
+        "userId": "user-uuid",
+        "name": "JavaScript Basics",
+        "slug": "javascript-basics",
+        "description": "Flashcards for JavaScript fundamentals",
+        "createdAt": "2023-03-04T12:00:00Z",
+        "updatedAt": "2023-03-04T12:00:00Z"
+      },
+      {
+        "id": "uuid-2",
+        "userId": "user-uuid",
+        "name": "React Hooks",
+        "slug": "react-hooks",
+        "description": "All about React hooks and their usage",
+        "createdAt": "2023-03-05T10:30:00Z",
+        "updatedAt": "2023-03-05T10:30:00Z"
+      }
+    ]
+  }
+}
+```
+
+### Get Deck by ID
+
+**Request:**
+```http
+GET /api/decks/uuid-1
+Authorization: Bearer <jwt-token>
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "data": {
+    "deck": {
+      "id": "uuid-1",
+      "userId": "user-uuid",
+      "name": "JavaScript Basics",
+      "slug": "javascript-basics",
+      "description": "Flashcards for JavaScript fundamentals",
+      "createdAt": "2023-03-04T12:00:00Z",
+      "updatedAt": "2023-03-04T12:00:00Z"
+    }
+  }
+}
+```
+
+### Get Deck by Slug
+
+**Request:**
+```http
+GET /api/decks/slug/javascript-basics
+Authorization: Bearer <jwt-token>
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "data": {
+    "deck": {
+      "id": "uuid-1",
+      "userId": "user-uuid",
+      "name": "JavaScript Basics",
+      "slug": "javascript-basics",
+      "description": "Flashcards for JavaScript fundamentals",
+      "createdAt": "2023-03-04T12:00:00Z",
+      "updatedAt": "2023-03-04T12:00:00Z"
+    }
+  }
+}
+```
+
 ### Create a Deck
 
 **Request:**
@@ -130,6 +219,56 @@ Authorization: Bearer <jwt-token>
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-04T12:00:00Z"
     }
+  }
+}
+```
+
+### Update a Deck
+
+**Request:**
+```http
+PUT /api/decks/uuid-1
+Content-Type: application/json
+Authorization: Bearer <jwt-token>
+
+{
+  "name": "JavaScript Fundamentals",
+  "description": "Updated description for JavaScript fundamentals"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "data": {
+    "deck": {
+      "id": "uuid-1",
+      "userId": "user-uuid",
+      "name": "JavaScript Fundamentals",
+      "slug": "javascript-fundamentals",
+      "description": "Updated description for JavaScript fundamentals",
+      "createdAt": "2023-03-04T12:00:00Z",
+      "updatedAt": "2023-03-06T09:15:00Z"
+    }
+  }
+}
+```
+
+### Delete a Deck
+
+**Request:**
+```http
+DELETE /api/decks/uuid-1
+Authorization: Bearer <jwt-token>
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "data": {
+    "message": "Deck deleted successfully"
   }
 }
 ```

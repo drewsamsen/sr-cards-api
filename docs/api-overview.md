@@ -83,6 +83,20 @@ The API does not currently implement versioning. Future versions may be accessed
 - `POST /api/auth/logout`: Logout a user
 - `GET /api/auth/me`: Get the current user's information
 
+### Decks
+
+- `GET /api/decks`: Get all decks for the current user
+- `GET /api/decks/:id`: Get a specific deck by ID
+- `GET /api/decks/slug/:slug`: Get a specific deck by slug
+- `POST /api/decks`: Create a new deck
+- `PUT /api/decks/:id`: Update a deck
+- `DELETE /api/decks/:id`: Delete a deck
+
+For detailed information about each endpoint, refer to the specific documentation:
+- [Authentication](./authentication.md)
+- [Decks](./decks.md)
+- [Health Check](./health.md)
+
 ## Error Handling
 
 The API uses a centralized error handling middleware that catches all errors and returns appropriate responses. In development mode, error stack traces are included in the response.
