@@ -2,6 +2,7 @@ import { supabaseAdmin } from '../config/supabase';
 import { Card, CardDB, CreateCardDTO, UpdateCardDTO, CardReviewDTO } from '../models/card.model';
 import { snakeToCamelObject, camelToSnakeObject } from '../utils';
 import { fsrsService } from './fsrs.service';
+import { logService } from './log.service';
 
 export const cardService = {
   /**
@@ -266,6 +267,26 @@ export const cardService = {
 
     if (error) {
       throw error;
+    }
+
+    // Create a log entry for this review
+    try {
+      await logService.createReviewLog({
+        cardId,
+        userId,
+        rating: reviewData.rating,
+        state: processedReview.logData.state,
+        due: processedReview.logData.due instanceof Date ? processedReview.logData.due.toISOString() : null,
+        stability: processedReview.logData.stability,
+        difficulty: processedReview.logData.difficulty,
+        elapsedDays: processedReview.logData.elapsed_days,
+        lastElapsedDays: processedReview.logData.last_elapsed_days,
+        scheduledDays: processedReview.logData.scheduled_days,
+        review: processedReview.logData.review instanceof Date ? processedReview.logData.review.toISOString() : new Date().toISOString()
+      });
+    } catch (logError) {
+      // Log the error but don't fail the review process
+      console.error('Failed to create review log:', logError);
     }
 
     // Add deck name and convert to camelCase

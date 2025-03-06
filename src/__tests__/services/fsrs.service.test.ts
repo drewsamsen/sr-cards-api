@@ -208,9 +208,22 @@ describe('FSRS Service', () => {
       expect(result).toHaveProperty('lapses');
       expect(result).toHaveProperty('state');
       expect(result).toHaveProperty('last_review');
+      expect(result).toHaveProperty('logData');
+      
+      // Check log data
+      expect(result.logData).toHaveProperty('rating');
+      expect(result.logData).toHaveProperty('state');
+      expect(result.logData).toHaveProperty('due');
+      expect(result.logData).toHaveProperty('stability');
+      expect(result.logData).toHaveProperty('difficulty');
+      expect(result.logData).toHaveProperty('elapsed_days');
+      expect(result.logData).toHaveProperty('last_elapsed_days');
+      expect(result.logData).toHaveProperty('scheduled_days');
+      expect(result.logData).toHaveProperty('review');
       
       // Check specific values based on our mock
       expect(result.scheduled_days).toBe(1); // Again = 1 day
+      expect(result.logData.rating).toBe(rating);
     });
 
     it('should process a review with rating 2 (Hard)', () => {

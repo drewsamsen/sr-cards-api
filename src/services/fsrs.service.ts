@@ -26,6 +26,21 @@ export interface ProcessedReview {
   lapses: number;
   state: number;
   last_review: Date;
+  // Add log data
+  logData: ReviewLogData;
+}
+
+// Define the review log data interface
+export interface ReviewLogData {
+  rating: number;
+  state: number;
+  due: Date | null;
+  stability: number;
+  difficulty: number;
+  elapsed_days: number;
+  last_elapsed_days: number;
+  scheduled_days: number;
+  review: Date;
 }
 
 /**
@@ -117,7 +132,7 @@ export const fsrsService = {
    * @param card The card from the database
    * @param rating The user's rating (1-4)
    * @param reviewedAt The time of the review (defaults to now)
-   * @returns Updated card parameters
+   * @returns Updated card parameters and log data
    */
   processReview(card: any, rating: number, reviewedAt?: Date): ProcessedReview {
     try {
@@ -175,7 +190,25 @@ export const fsrsService = {
       const ratedResult = result[fsrsRating];
       console.log('Rated result:', JSON.stringify(ratedResult, null, 2));
       
-      // Return the updated card parameters
+      // Calculate last_elapsed_days (days between previous reviews)
+      const lastElapsedDays = card.lastReview 
+        ? (now.getTime() - new Date(card.lastReview).getTime()) / (1000 * 60 * 60 * 24)
+        : 0;
+      
+      // Create log data
+      const logData: ReviewLogData = {
+        rating: rating,
+        state: cardState,
+        due: card.due ? new Date(card.due) : null,
+        stability: parseFloat(card.stability) || 0,
+        difficulty: parseFloat(card.difficulty) || 0,
+        elapsed_days: ratedResult.log.elapsed_days,
+        last_elapsed_days: lastElapsedDays,
+        scheduled_days: ratedResult.card.scheduled_days,
+        review: now
+      };
+      
+      // Return the updated card parameters and log data
       return {
         due: ratedResult.card.due instanceof Date ? ratedResult.card.due : new Date(ratedResult.card.due),
         stability: ratedResult.card.stability,
@@ -185,7 +218,8 @@ export const fsrsService = {
         reps: ratedResult.card.reps,
         lapses: ratedResult.card.lapses,
         state: ratedResult.card.state,
-        last_review: now instanceof Date ? now : new Date(now)
+        last_review: now instanceof Date ? now : new Date(now),
+        logData: logData
       };
     } catch (error) {
       console.error('FSRS calculation error details:', error);
