@@ -17,5 +17,6 @@ router.get('/review', cardController.getCardsForReview);
 router.get('/:id', cardController.getCardById);
 router.put('/:id', cardController.updateCard);
 router.delete('/:id', cardController.deleteCard);
+router.post('/:id/review', cardController.reviewCard);
 
 export default router; 

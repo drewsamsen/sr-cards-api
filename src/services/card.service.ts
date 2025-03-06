@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../config/supabase';
-import { Card, CardDB, CreateCardDTO, UpdateCardDTO } from '../models/card.model';
+import { Card, CardDB, CreateCardDTO, UpdateCardDTO, CardReviewDTO } from '../models/card.model';
 import { snakeToCamelObject, camelToSnakeObject } from '../utils';
+import { fsrsService } from './fsrs.service';
 
 export const cardService = {
   /**
@@ -217,5 +218,66 @@ export const cardService = {
       delete cardWithDeckName.decks;
       return snakeToCamelObject(cardWithDeckName) as Card;
     });
+  },
+
+  /**
+   * Submit a review for a card
+   */
+  async submitCardReview(cardId: string, reviewData: CardReviewDTO, userId: string): Promise<Card | null> {
+    // First check if the card exists and belongs to the user
+    const card = await this.getCardById(cardId, userId);
+    if (!card) {
+      return null;
+    }
+
+    // Process the review with FSRS - this will throw an error if FSRS calculation fails
+    const processedReview = fsrsService.processReview(
+      card,
+      reviewData.rating,
+      reviewData.reviewedAt ? new Date(reviewData.reviewedAt) : undefined
+    );
+
+    // Convert to snake_case for database update
+    const updateData = camelToSnakeObject({
+      due: processedReview.due,
+      stability: processedReview.stability,
+      difficulty: processedReview.difficulty,
+      elapsedDays: processedReview.elapsed_days,
+      scheduledDays: processedReview.scheduled_days,
+      reps: processedReview.reps,
+      lapses: processedReview.lapses,
+      state: processedReview.state,
+      lastReview: processedReview.last_review
+    });
+
+    // Update the card in the database
+    const { data, error } = await supabaseAdmin
+      .from('cards')
+      .update(updateData)
+      .eq('id', cardId)
+      .eq('user_id', userId)
+      .select(`
+        *,
+        decks:deck_id (
+          name
+        )
+      `)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    // Add deck name and convert to camelCase
+    const cardWithDeckName = {
+      ...data,
+      deck_name: data.decks?.name
+    };
+    
+    // Remove the nested decks object before converting
+    delete cardWithDeckName.decks;
+    
+    // Convert snake_case DB result to camelCase for API
+    return snakeToCamelObject(cardWithDeckName) as Card;
   }
 }; 

@@ -102,6 +102,7 @@ The API does not currently implement versioning. Future versions may be accessed
 - `PUT /api/cards/:id`: Update a card
 - `DELETE /api/cards/:id`: Delete a card
 - `GET /api/cards/review`: Get cards due for review
+- `POST /api/cards/:id/review`: Submit a review for a card
 
 For detailed information about each endpoint, refer to the specific documentation:
 - [Authentication](./authentication.md)

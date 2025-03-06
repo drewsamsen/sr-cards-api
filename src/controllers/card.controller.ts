@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { cardService } from '../services/card.service';
-import { CreateCardDTO, UpdateCardDTO } from '../models/card.model';
+import { CreateCardDTO, UpdateCardDTO, CardReviewDTO } from '../models/card.model';
 import { asyncHandler } from '../utils';
 
 export const cardController = {
@@ -165,5 +165,51 @@ export const cardController = {
         cards,
       },
     });
+  }),
+
+  /**
+   * Submit a review for a card
+   */
+  reviewCard: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user.id;
+    const cardId = req.params.id;
+    const { rating, reviewedAt } = req.body;
+
+    if (rating === undefined || ![1, 2, 3, 4].includes(rating)) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Valid rating (1-4) is required',
+      });
+    }
+
+    const reviewData: CardReviewDTO = {
+      rating,
+      reviewedAt: reviewedAt || new Date().toISOString(),
+    };
+
+    try {
+      const card = await cardService.submitCardReview(cardId, reviewData, userId);
+
+      if (!card) {
+        return res.status(404).json({
+          status: 'error',
+          message: 'Card not found',
+        });
+      }
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          card,
+        },
+      });
+    } catch (error) {
+      // If there's an error with the FSRS calculation, return a 500 error
+      console.error('Error processing card review:', error);
+      res.status(500).json({
+        status: 'error',
+        message: 'Failed to process card review. FSRS calculation error.',
+      });
+    }
   }),
 }; 
