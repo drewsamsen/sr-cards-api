@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { cardService } from '../services/card.service';
 import { CreateCardDTO, UpdateCardDTO, CardReviewDTO } from '../models/card.model';
 import { asyncHandler } from '../utils';
+import { logService } from '../services/log.service';
 
 export const cardController = {
   /**
@@ -224,5 +225,33 @@ export const cardController = {
         message: 'Failed to process card review. FSRS calculation error.',
       });
     }
+  }),
+
+  /**
+   * Get logs for a specific card
+   */
+  getCardLogs: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user.id;
+    const cardId = req.params.id;
+
+    // First check if the card exists and belongs to the user
+    const card = await cardService.getCardById(cardId, userId);
+
+    if (!card) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Card not found',
+      });
+    }
+
+    // Get logs for the card
+    const logs = await logService.getLogsByCardId(cardId, userId);
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        logs,
+      },
+    });
   }),
 }; 

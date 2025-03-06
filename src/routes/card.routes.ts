@@ -4,19 +4,28 @@ import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
-// All card routes require authentication
+// Apply auth middleware to all card routes
 router.use(authenticate);
 
-// Get all cards for the current user
+// Get all cards
 router.get('/', cardController.getAllCards);
 
 // Get cards due for review
 router.get('/review', cardController.getCardsForReview);
 
-// Card routes by ID
+// Get a specific card
 router.get('/:id', cardController.getCardById);
-router.put('/:id', cardController.updateCard);
+
+// Update a card
+router.patch('/:id', cardController.updateCard);
+
+// Delete a card
 router.delete('/:id', cardController.deleteCard);
+
+// Submit a review for a card
 router.post('/:id/review', cardController.reviewCard);
+
+// Get logs for a specific card
+router.get('/:id/logs', cardController.getCardLogs);
 
 export default router; 

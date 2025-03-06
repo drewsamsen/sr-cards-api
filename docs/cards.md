@@ -420,6 +420,114 @@ Body:
 }
 ```
 
+### Submit a Review for a Card
+
+```
+POST /api/cards/:id/review
+```
+
+#### Request
+
+Headers:
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+Body:
+```json
+{
+  "rating": 3, // 1=Again, 2=Hard, 3=Good, 4=Easy
+  "reviewedAt": "2023-01-01T00:00:00.000Z" // Optional, defaults to current time
+}
+```
+
+#### Response
+
+```json
+{
+  "status": "success",
+  "data": {
+    "card": {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "userId": "123e4567-e89b-12d3-a456-426614174001",
+      "deckId": "123e4567-e89b-12d3-a456-426614174002",
+      "front": "What is a closure in JavaScript?",
+      "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
+      "state": 1,
+      "due": "2023-01-02T00:00:00.000Z",
+      "stability": 1.5,
+      "difficulty": 0.3,
+      "elapsed_days": 0,
+      "scheduled_days": 1,
+      "reps": 1,
+      "lapses": 0,
+      "last_review": "2023-01-01T00:00:00.000Z",
+      "createdAt": "2023-01-01T00:00:00.000Z",
+      "updatedAt": "2023-01-01T00:00:00.000Z",
+      "deckName": "JavaScript Fundamentals"
+    }
+  }
+}
+```
+
+### Get Review Logs for a Card
+
+```
+GET /api/cards/:id/logs
+```
+
+This endpoint returns the review history logs for a specific card.
+
+#### Request
+
+Headers:
+```
+Authorization: Bearer <token>
+```
+
+#### Response
+
+```json
+{
+  "status": "success",
+  "data": {
+    "logs": [
+      {
+        "id": "123e4567-e89b-12d3-a456-426614174003",
+        "cardId": "123e4567-e89b-12d3-a456-426614174000",
+        "userId": "123e4567-e89b-12d3-a456-426614174001",
+        "rating": 3,
+        "state": 0,
+        "due": null,
+        "stability": 0,
+        "difficulty": 0,
+        "elapsedDays": 0,
+        "lastElapsedDays": 0,
+        "scheduledDays": 1,
+        "review": "2023-01-01T00:00:00.000Z",
+        "createdAt": "2023-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "123e4567-e89b-12d3-a456-426614174004",
+        "cardId": "123e4567-e89b-12d3-a456-426614174000",
+        "userId": "123e4567-e89b-12d3-a456-426614174001",
+        "rating": 4,
+        "state": 1,
+        "due": "2023-01-02T00:00:00.000Z",
+        "stability": 1.5,
+        "difficulty": 0.3,
+        "elapsedDays": 1,
+        "lastElapsedDays": 0,
+        "scheduledDays": 7,
+        "review": "2023-01-02T00:00:00.000Z",
+        "createdAt": "2023-01-02T00:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
 ## Error Responses
 
 ### Card Not Found
@@ -455,6 +563,24 @@ Body:
       "message": "Front content is required"
     }
   ]
+}
+```
+
+### Invalid Rating
+
+```json
+{
+  "status": "error",
+  "message": "Valid rating (1-4) is required"
+}
+```
+
+### Missing Required Fields
+
+```json
+{
+  "status": "error",
+  "message": "Front and back content are required"
 }
 ```
 

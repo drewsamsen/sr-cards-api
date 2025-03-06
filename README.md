@@ -20,6 +20,9 @@ Detailed documentation is available in the [docs](./docs) directory:
 - [API Overview](./docs/api-overview.md)
 - [Project Structure](./docs/project-structure.md)
 - [Authentication](./docs/authentication.md)
+- [Decks](./docs/decks.md)
+- [Cards](./docs/cards.md)
+- [Logs](./docs/logs.md)
 
 ## Project Structure
 
