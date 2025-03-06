@@ -8,7 +8,9 @@
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc",
     "lint": "eslint . --ext .ts",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "supabase:status": "npx supabase status",
@@ -35,10 +37,13 @@
   "devDependencies": {
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
+    "@types/jest": "^29.5.14",
     "@types/node": "^22.13.9",
     "@types/pg": "^8.11.11",
+    "jest": "^29.7.0",
     "nodemon": "^3.1.9",
     "supabase": "^2.15.8",
+    "ts-jest": "^29.2.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   }

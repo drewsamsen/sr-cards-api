@@ -63,35 +63,53 @@ export const fsrsService = {
    * @returns Object with predicted review dates for each rating
    */
   calculateReviewMetrics(card: any): ReviewMetrics {
-    const fsrs = this.getFSRS();
-    const now = new Date();
-    
-    // Create an FSRS card from our database card
-    const fsrsCard = createEmptyCard();
-    
-    // If the card has been reviewed before, use its existing values
-    if (card.state > 0) {
-      fsrsCard.due = card.due ? new Date(card.due) : now;
-      fsrsCard.stability = card.stability || 0;
-      fsrsCard.difficulty = card.difficulty || 0;
-      fsrsCard.elapsed_days = card.elapsed_days || 0;
-      fsrsCard.scheduled_days = card.scheduled_days || 0;
-      fsrsCard.reps = card.reps || 0;
-      fsrsCard.lapses = card.lapses || 0;
-      fsrsCard.state = card.state;
-      fsrsCard.last_review = card.last_review ? new Date(card.last_review) : undefined;
+    try {
+      console.log('Calculating review metrics for card:', JSON.stringify(card, null, 2));
+      
+      // Validate card
+      if (!card || typeof card !== 'object') {
+        throw new Error('Invalid card object');
+      }
+      
+      const fsrs = this.getFSRS();
+      const now = new Date();
+      
+      // Create an FSRS card from our database card
+      const fsrsCard = createEmptyCard();
+      
+      // If the card has been reviewed before, use its existing values
+      // Convert all values to appropriate types to avoid issues
+      const cardState = typeof card.state === 'string' ? parseInt(card.state, 10) : (card.state || 0);
+      
+      if (cardState > 0) {
+        fsrsCard.due = card.due ? new Date(card.due) : now;
+        fsrsCard.stability = parseFloat(card.stability) || 0;
+        fsrsCard.difficulty = parseFloat(card.difficulty) || 0;
+        fsrsCard.elapsed_days = parseFloat(card.elapsed_days) || 0;
+        fsrsCard.scheduled_days = parseFloat(card.scheduled_days) || 0;
+        fsrsCard.reps = parseInt(card.reps, 10) || 0;
+        fsrsCard.lapses = parseInt(card.lapses, 10) || 0;
+        fsrsCard.state = cardState;
+        fsrsCard.last_review = card.last_review ? new Date(card.last_review) : undefined;
+      }
+      
+      console.log('FSRS Card prepared:', JSON.stringify(fsrsCard, null, 2));
+      
+      // Get scheduling cards for all ratings
+      const result = fsrs.repeat(fsrsCard, now);
+      console.log('FSRS result keys:', Object.keys(result));
+      
+      // Extract the due dates for each rating
+      return {
+        again: result[Rating.Again].card.due,
+        hard: result[Rating.Hard].card.due,
+        good: result[Rating.Good].card.due,
+        easy: result[Rating.Easy].card.due
+      };
+    } catch (error) {
+      console.error('FSRS calculation error details:', error);
+      throw error;
     }
-    
-    // Get scheduling cards for all ratings
-    const result = fsrs.repeat(fsrsCard, now);
-    
-    // Extract the due dates for each rating
-    return {
-      again: result[Rating.Again].card.due,
-      hard: result[Rating.Hard].card.due,
-      good: result[Rating.Good].card.due,
-      easy: result[Rating.Easy].card.due
-    };
   },
   
   /**
@@ -102,50 +120,76 @@ export const fsrsService = {
    * @returns Updated card parameters
    */
   processReview(card: any, rating: number, reviewedAt?: Date): ProcessedReview {
-    const fsrs = this.getFSRS();
-    const now = reviewedAt || new Date();
-    
-    // Map the rating to the FSRS Rating enum
-    let fsrsRating: Rating;
-    switch (rating) {
-      case 1: fsrsRating = Rating.Again; break;
-      case 2: fsrsRating = Rating.Hard; break;
-      case 3: fsrsRating = Rating.Good; break;
-      case 4: fsrsRating = Rating.Easy; break;
-      default: throw new Error(`Invalid rating: ${rating}. Must be 1-4.`);
+    try {
+      console.log('Processing review with card:', JSON.stringify(card, null, 2));
+      console.log('Rating:', rating);
+      
+      // Validate rating
+      if (typeof rating !== 'number' || isNaN(rating) || rating < 1 || rating > 4) {
+        throw new Error(`Invalid rating: ${rating}. Must be a number between 1-4.`);
+      }
+      
+      // Validate card
+      if (!card || typeof card !== 'object') {
+        throw new Error('Invalid card object');
+      }
+      
+      const fsrs = this.getFSRS();
+      const now = reviewedAt || new Date();
+      
+      // Map the rating to the FSRS Rating enum
+      let fsrsRating: Rating;
+      switch (rating) {
+        case 1: fsrsRating = Rating.Again; break;
+        case 2: fsrsRating = Rating.Hard; break;
+        case 3: fsrsRating = Rating.Good; break;
+        case 4: fsrsRating = Rating.Easy; break;
+        default: throw new Error(`Invalid rating: ${rating}. Must be 1-4.`);
+      }
+      
+      // Create an FSRS card from our database card
+      const fsrsCard = createEmptyCard();
+      
+      // If the card has been reviewed before, use its existing values
+      // Convert all values to appropriate types to avoid issues
+      const cardState = typeof card.state === 'string' ? parseInt(card.state, 10) : (card.state || 0);
+      
+      if (cardState > 0) {
+        fsrsCard.due = card.due ? new Date(card.due) : now;
+        fsrsCard.stability = parseFloat(card.stability) || 0;
+        fsrsCard.difficulty = parseFloat(card.difficulty) || 0;
+        fsrsCard.elapsed_days = parseFloat(card.elapsed_days) || 0;
+        fsrsCard.scheduled_days = parseFloat(card.scheduled_days) || 0;
+        fsrsCard.reps = parseInt(card.reps, 10) || 0;
+        fsrsCard.lapses = parseInt(card.lapses, 10) || 0;
+        fsrsCard.state = cardState;
+        fsrsCard.last_review = card.last_review ? new Date(card.last_review) : undefined;
+      }
+      
+      console.log('FSRS Card prepared:', JSON.stringify(fsrsCard, null, 2));
+      
+      // Get the result for the specific rating
+      const result = fsrs.repeat(fsrsCard, now);
+      console.log('FSRS result keys:', Object.keys(result));
+      
+      const ratedResult = result[fsrsRating];
+      console.log('Rated result:', JSON.stringify(ratedResult, null, 2));
+      
+      // Return the updated card parameters
+      return {
+        due: ratedResult.card.due,
+        stability: ratedResult.card.stability,
+        difficulty: ratedResult.card.difficulty,
+        elapsed_days: ratedResult.card.elapsed_days,
+        scheduled_days: ratedResult.card.scheduled_days,
+        reps: ratedResult.card.reps,
+        lapses: ratedResult.card.lapses,
+        state: ratedResult.card.state,
+        last_review: now
+      };
+    } catch (error) {
+      console.error('FSRS calculation error details:', error);
+      throw error;
     }
-    
-    // Create an FSRS card from our database card
-    const fsrsCard = createEmptyCard();
-    
-    // If the card has been reviewed before, use its existing values
-    if (card.state > 0) {
-      fsrsCard.due = card.due ? new Date(card.due) : now;
-      fsrsCard.stability = card.stability || 0;
-      fsrsCard.difficulty = card.difficulty || 0;
-      fsrsCard.elapsed_days = card.elapsed_days || 0;
-      fsrsCard.scheduled_days = card.scheduled_days || 0;
-      fsrsCard.reps = card.reps || 0;
-      fsrsCard.lapses = card.lapses || 0;
-      fsrsCard.state = card.state;
-      fsrsCard.last_review = card.last_review ? new Date(card.last_review) : undefined;
-    }
-    
-    // Get the result for the specific rating
-    const result = fsrs.repeat(fsrsCard, now);
-    const ratedResult = result[fsrsRating];
-    
-    // Return the updated card parameters
-    return {
-      due: ratedResult.card.due,
-      stability: ratedResult.card.stability,
-      difficulty: ratedResult.card.difficulty,
-      elapsed_days: ratedResult.card.elapsed_days,
-      scheduled_days: ratedResult.card.scheduled_days,
-      reps: ratedResult.card.reps,
-      lapses: ratedResult.card.lapses,
-      state: ratedResult.card.state,
-      last_review: now
-    };
   }
 }; 

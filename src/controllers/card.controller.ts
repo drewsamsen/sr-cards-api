@@ -173,9 +173,20 @@ export const cardController = {
   reviewCard: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
     const cardId = req.params.id;
-    const { rating, reviewedAt } = req.body;
+    const { rating: rawRating, reviewedAt } = req.body;
+    
+    console.log('Review request received:', {
+      userId,
+      cardId,
+      rating: rawRating,
+      reviewedAt,
+      body: req.body
+    });
 
-    if (rating === undefined || ![1, 2, 3, 4].includes(rating)) {
+    // Convert rating to number if it's a string
+    const rating = typeof rawRating === 'string' ? parseInt(rawRating, 10) : rawRating;
+
+    if (rating === undefined || isNaN(rating) || ![1, 2, 3, 4].includes(rating)) {
       return res.status(400).json({
         status: 'error',
         message: 'Valid rating (1-4) is required',
@@ -186,6 +197,8 @@ export const cardController = {
       rating,
       reviewedAt: reviewedAt || new Date().toISOString(),
     };
+    
+    console.log('Review data prepared:', reviewData);
 
     try {
       const card = await cardService.submitCardReview(cardId, reviewData, userId);
