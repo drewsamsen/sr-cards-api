@@ -2,14 +2,7 @@ import { supabaseAdmin } from '../config/supabase';
 import { Deck, DeckDB, CreateDeckDTO, UpdateDeckDTO } from '../models/deck.model';
 import { Card } from '../models/card.model';
 import { snakeToCamelObject, camelToSnakeObject } from '../utils';
-
-// Define a type for the review metrics
-interface ReviewMetrics {
-  again: Date;
-  hard: Date;
-  good: Date;
-  easy: Date;
-}
+import { fsrsService, ReviewMetrics } from './fsrs.service';
 
 // Define a type for the review result
 interface ReviewResult {
@@ -205,26 +198,8 @@ export const deckService = {
     // Remove the nested decks object before converting
     delete cardWithDeckName.decks;
     
-    // Create mock scheduling dates based on spaced repetition principles
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    
-    const threeDays = new Date(now);
-    threeDays.setDate(threeDays.getDate() + 3);
-    
-    const oneWeek = new Date(now);
-    oneWeek.setDate(oneWeek.getDate() + 7);
-    
-    const twoWeeks = new Date(now);
-    twoWeeks.setDate(twoWeeks.getDate() + 14);
-    
-    const reviewMetrics: ReviewMetrics = {
-      again: tomorrow,      // If rated "again", review tomorrow
-      hard: threeDays,      // If rated "hard", review in 3 days
-      good: oneWeek,        // If rated "good", review in 1 week
-      easy: twoWeeks        // If rated "easy", review in 2 weeks
-    };
+    // Calculate review metrics using the FSRS service
+    const reviewMetrics = fsrsService.calculateReviewMetrics(randomCard);
     
     return { 
       deck, 
