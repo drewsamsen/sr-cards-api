@@ -117,6 +117,17 @@ For detailed information about each endpoint, refer to the specific documentatio
 - [Cards](./cards.md)
 - [Health Check](./health.md)
 
+## FSRS Implementation
+
+The Card API implements the Free Spaced Repetition Scheduler (FSRS) algorithm for optimizing review intervals. Key features include:
+
+- User-specific FSRS parameters stored in user settings
+- Support for both snake_case and camelCase property naming conventions
+- Automatic calculation of review intervals based on user performance
+- Caching of FSRS instances for performance optimization
+
+For detailed information about the FSRS implementation, see the [Cards Documentation](./cards.md#fsrs-algorithm).
+
 ## Error Handling
 
 The API uses a centralized error handling middleware that catches all errors and returns appropriate responses. In development mode, error stack traces are included in the response.

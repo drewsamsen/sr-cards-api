@@ -73,6 +73,19 @@ When a user is created or when settings are requested for the first time, defaul
 }
 ```
 
+## FSRS Parameters
+
+The FSRS parameters in user settings control how the spaced repetition algorithm works for each user. These parameters are used by the FSRS service to calculate optimal review intervals based on user performance.
+
+### How FSRS Parameters Are Used
+
+1. When a user reviews a card, the FSRS service retrieves the user's custom parameters from their settings
+2. The service creates a user-specific FSRS instance with these parameters
+3. For performance optimization, FSRS instances are cached with an expiration time
+4. When user settings are updated, the cache is automatically cleared to ensure fresh parameters are used
+
+The FSRS service supports both snake_case and camelCase property naming conventions for compatibility with different client implementations.
+
 ## API Endpoints
 
 ### Get User Settings

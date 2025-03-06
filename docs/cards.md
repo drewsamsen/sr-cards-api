@@ -42,12 +42,25 @@ This API implements the Free Spaced Repetition Scheduler (FSRS) algorithm for op
 
 - `stability`: A measure of how well the information is retained
 - `difficulty`: Reflects the inherent difficulty of the card content
-- `elapsed_days`: Days since the card was last reviewed
-- `scheduled_days`: The interval at which the card is next scheduled
+- `elapsed_days` / `elapsedDays`: Days since the card was last reviewed
+- `scheduled_days` / `scheduledDays`: The interval at which the card is next scheduled
 - `reps`: Total number of times the card has been reviewed
 - `lapses`: Times the card was forgotten or remembered incorrectly
-- `last_review`: The most recent review date, if applicable
+- `last_review` / `lastReview`: The most recent review date, if applicable
 - `due`: Date when the card is next due for review (null for new cards)
+
+> **Note**: The API supports both snake_case (`elapsed_days`, `scheduled_days`, `last_review`) and camelCase (`elapsedDays`, `scheduledDays`, `lastReview`) property naming conventions for compatibility with different client implementations.
+
+### Implementation Details
+
+The FSRS service internally uses the `ts-fsrs` package to implement the algorithm. The service includes:
+
+- Support for both snake_case and camelCase property naming conventions
+- User-specific FSRS parameters retrieved from user settings
+- Caching of FSRS instances for performance optimization
+- Automatic conversion between database card format and FSRS card format
+
+The service handles type conversions and ensures that all required fields are properly formatted before processing reviews or calculating metrics.
 
 ## API Endpoints
 
