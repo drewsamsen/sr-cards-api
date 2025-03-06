@@ -1,4 +1,5 @@
 import { supabaseAdmin, supabaseAnon } from '../config/supabase';
+import { userSettingsService } from './user-settings.service';
 
 interface SignUpData {
   email: string;
@@ -16,6 +17,8 @@ export const authService = {
    * Sign up a new user
    */
   async signUp({ email, password, fullName }: SignUpData) {
+    console.log(`Signing up user: ${email}`);
+    
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -26,7 +29,21 @@ export const authService = {
     });
 
     if (error) {
+      console.error(`Error creating user: ${email}`, error);
       throw error;
+    }
+
+    console.log(`User created successfully: ${email} with ID: ${data.user.id}`);
+
+    // Create default settings for the new user
+    try {
+      console.log(`Attempting to create default settings for user: ${data.user.id}`);
+      const settings = await userSettingsService.createDefaultSettings(data.user.id);
+      console.log(`Settings creation result:`, settings ? 'Success' : 'Failed');
+    } catch (settingsError) {
+      console.error('Error creating default settings:', settingsError);
+      // Continue even if settings creation fails
+      // The user is still created successfully
     }
 
     return data;

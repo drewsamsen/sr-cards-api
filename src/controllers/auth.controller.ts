@@ -17,18 +17,31 @@ export const authController = {
       });
     }
 
-    const user = await authService.signUp({ email, password, fullName });
+    try {
+      const user = await authService.signUp({ email, password, fullName });
 
-    res.status(201).json({
-      status: 'success',
-      data: {
-        user: {
-          id: user.user.id,
-          email: user.user.email,
-          fullName: user.user.user_metadata?.full_name,
+      res.status(201).json({
+        status: 'success',
+        data: {
+          user: {
+            id: user.user.id,
+            email: user.user.email,
+            fullName: user.user.user_metadata?.full_name,
+          },
         },
-      },
-    });
+      });
+    } catch (error: any) {
+      // Check if the error message indicates the user already exists
+      if (error.message && error.message.includes('already been registered')) {
+        return res.status(409).json({
+          status: 'error',
+          message: 'A user with this email address already exists',
+        });
+      }
+      
+      // Re-throw other errors to be handled by the error middleware
+      throw error;
+    }
   }),
 
   /**

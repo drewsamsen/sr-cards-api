@@ -62,6 +62,7 @@ async function createUser(email, password, fullName) {
       fullName
     });
     console.log(`${colors.green}✓ User created: ${email}${colors.reset}`);
+    console.log(`${colors.dim}User ID: ${response.data.data.user.id}${colors.reset}`);
     return response.data.data.user;
   } catch (error) {
     if (error.response && error.response.status === 409) {
@@ -72,13 +73,22 @@ async function createUser(email, password, fullName) {
           email,
           password
         });
+        console.log(`${colors.dim}User ID: ${loginResponse.data.data.user.id}${colors.reset}`);
         return loginResponse.data.data.user;
       } catch (loginError) {
         console.error(`${colors.red}✗ Could not login as existing user: ${email}${colors.reset}`);
+        if (loginError.response) {
+          console.error(`${colors.red}Response status: ${loginError.response.status}${colors.reset}`);
+          console.error(`${colors.red}Response data: ${JSON.stringify(loginError.response.data)}${colors.reset}`);
+        }
         return null;
       }
     } else {
       console.error(`${colors.red}✗ Error creating user ${email}: ${error.message}${colors.reset}`);
+      if (error.response) {
+        console.error(`${colors.red}Response status: ${error.response.status}${colors.reset}`);
+        console.error(`${colors.red}Response data: ${JSON.stringify(error.response.data)}${colors.reset}`);
+      }
       return null;
     }
   }
