@@ -237,9 +237,9 @@ export const cardService = {
       reviewData.reviewedAt ? new Date(reviewData.reviewedAt) : undefined
     );
 
-    // Convert to snake_case for database update
+    // Ensure all date fields are properly formatted as ISO strings
     const updateData = camelToSnakeObject({
-      due: processedReview.due,
+      due: processedReview.due instanceof Date ? processedReview.due.toISOString() : null,
       stability: processedReview.stability,
       difficulty: processedReview.difficulty,
       elapsedDays: processedReview.elapsed_days,
@@ -247,7 +247,7 @@ export const cardService = {
       reps: processedReview.reps,
       lapses: processedReview.lapses,
       state: processedReview.state,
-      lastReview: processedReview.last_review
+      lastReview: processedReview.last_review instanceof Date ? processedReview.last_review.toISOString() : null
     });
 
     // Update the card in the database

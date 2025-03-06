@@ -101,10 +101,10 @@ export const fsrsService = {
       
       // Extract the due dates for each rating
       return {
-        again: result[Rating.Again].card.due,
-        hard: result[Rating.Hard].card.due,
-        good: result[Rating.Good].card.due,
-        easy: result[Rating.Easy].card.due
+        again: result[Rating.Again].card.due instanceof Date ? result[Rating.Again].card.due : new Date(result[Rating.Again].card.due),
+        hard: result[Rating.Hard].card.due instanceof Date ? result[Rating.Hard].card.due : new Date(result[Rating.Hard].card.due),
+        good: result[Rating.Good].card.due instanceof Date ? result[Rating.Good].card.due : new Date(result[Rating.Good].card.due),
+        easy: result[Rating.Easy].card.due instanceof Date ? result[Rating.Easy].card.due : new Date(result[Rating.Easy].card.due)
       };
     } catch (error) {
       console.error('FSRS calculation error details:', error);
@@ -177,7 +177,7 @@ export const fsrsService = {
       
       // Return the updated card parameters
       return {
-        due: ratedResult.card.due,
+        due: ratedResult.card.due instanceof Date ? ratedResult.card.due : new Date(ratedResult.card.due),
         stability: ratedResult.card.stability,
         difficulty: ratedResult.card.difficulty,
         elapsed_days: ratedResult.card.elapsed_days,
@@ -185,7 +185,7 @@ export const fsrsService = {
         reps: ratedResult.card.reps,
         lapses: ratedResult.card.lapses,
         state: ratedResult.card.state,
-        last_review: now
+        last_review: now instanceof Date ? now : new Date(now)
       };
     } catch (error) {
       console.error('FSRS calculation error details:', error);
