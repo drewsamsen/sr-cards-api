@@ -5,11 +5,10 @@ import { snakeToCamelObject, camelToSnakeObject } from '../utils';
 
 // Define a type for the review metrics
 interface ReviewMetrics {
-  totalCards: number;
-  cardsRemaining: number;
-  progress: number;
-  streakDays: number;
-  nextDueDate: Date | null;
+  again: Date;
+  hard: Date;
+  good: Date;
+  easy: Date;
 }
 
 // Define a type for the review result
@@ -206,13 +205,25 @@ export const deckService = {
     // Remove the nested decks object before converting
     delete cardWithDeckName.decks;
     
-    // Calculate additional metrics for the card
+    // Create mock scheduling dates based on spaced repetition principles
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const threeDays = new Date(now);
+    threeDays.setDate(threeDays.getDate() + 3);
+    
+    const oneWeek = new Date(now);
+    oneWeek.setDate(oneWeek.getDate() + 7);
+    
+    const twoWeeks = new Date(now);
+    twoWeeks.setDate(twoWeeks.getDate() + 14);
+    
     const reviewMetrics: ReviewMetrics = {
-      totalCards: data.length,
-      cardsRemaining: data.length - 1, // Just a placeholder, in a real app you'd count cards not yet reviewed
-      progress: Math.round((1 / data.length) * 100), // Simple progress calculation
-      streakDays: 1, // Placeholder, would be calculated from user's review history
-      nextDueDate: randomCard.due ? new Date(randomCard.due) : null
+      again: tomorrow,      // If rated "again", review tomorrow
+      hard: threeDays,      // If rated "hard", review in 3 days
+      good: oneWeek,        // If rated "good", review in 1 week
+      easy: twoWeeks        // If rated "easy", review in 2 weeks
     };
     
     return { 

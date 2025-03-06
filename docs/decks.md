@@ -234,15 +234,23 @@ Authorization: Bearer <jwt-token>
       "deckName": "JavaScript Basics"
     },
     "reviewMetrics": {
-      "totalCards": 25,
-      "cardsRemaining": 24,
-      "progress": 4,
-      "streakDays": 1,
-      "nextDueDate": null
+      "again": "2023-03-05T12:30:00Z",
+      "hard": "2023-03-07T12:30:00Z",
+      "good": "2023-03-11T12:30:00Z",
+      "easy": "2023-03-18T12:30:00Z"
     }
   }
 }
 ```
+
+The `reviewMetrics` object provides predicted due dates for the card based on different review ratings:
+
+- `again`: When the card should be reviewed if rated "Again" (typically the next day)
+- `hard`: When the card should be reviewed if rated "Hard" (typically a few days later)
+- `good`: When the card should be reviewed if rated "Good" (typically a week later)
+- `easy`: When the card should be reviewed if rated "Easy" (typically two weeks later)
+
+These dates follow spaced repetition principles, with longer intervals for better-remembered cards.
 
 ### Create a Deck
 
