@@ -114,8 +114,9 @@ export const cardService = {
       deckId,
       front: cardData.front,
       back: cardData.back,
-      status: cardData.status || 'new',
-      reviewAt: cardData.reviewAt || null
+      // FSRS fields will use default values from the database
+      state: 0, // New card
+      due: null // New cards have null due date
     }) as Omit<CardDB, 'id' | 'created_at' | 'updated_at'>;
 
     const { data, error } = await supabaseAdmin
@@ -199,7 +200,7 @@ export const cardService = {
         )
       `)
       .eq('user_id', userId)
-      .or(`status.eq.new,and(status.eq.review,review_at.lte.${now})`)
+      .or(`state.eq.0,and(state.in.(1,2,3),due.lte.${now})`)
       .limit(limit);
 
     if (error) {

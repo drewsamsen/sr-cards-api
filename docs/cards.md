@@ -13,20 +13,41 @@ A card represents a flashcard with front and back content, belonging to a specif
   "deckId": "uuid",
   "front": "string",
   "back": "string",
-  "status": "new | learning | review",
-  "reviewAt": "timestamp | null",
+  "state": 0,
+  "due": "timestamp | null",
+  "stability": 0,
+  "difficulty": 0,
+  "elapsed_days": 0,
+  "scheduled_days": 0,
+  "reps": 0,
+  "lapses": 0,
+  "last_review": "timestamp | null",
   "createdAt": "timestamp",
   "updatedAt": "timestamp",
   "deckName": "string"
 }
 ```
 
-## Card Status
+## Card State
 
-Cards have three possible status values:
-- `new`: Cards that have never been reviewed
-- `learning`: Cards that are currently being learned
-- `review`: Cards that have been learned and are in the review cycle
+Cards have four possible state values:
+- `0`: New - Cards that have never been reviewed
+- `1`: Learning - Cards that are currently being learned
+- `2`: Review - Cards that have been learned and are in the review cycle
+- `3`: Relearning - Cards that were previously learned but have been forgotten and are being relearned
+
+## FSRS Algorithm
+
+This API implements the Free Spaced Repetition Scheduler (FSRS) algorithm for optimizing review intervals. The following fields are used by the algorithm:
+
+- `stability`: A measure of how well the information is retained
+- `difficulty`: Reflects the inherent difficulty of the card content
+- `elapsed_days`: Days since the card was last reviewed
+- `scheduled_days`: The interval at which the card is next scheduled
+- `reps`: Total number of times the card has been reviewed
+- `lapses`: Times the card was forgotten or remembered incorrectly
+- `last_review`: The most recent review date, if applicable
+- `due`: Date when the card is next due for review (null for new cards)
 
 ## API Endpoints
 
@@ -60,8 +81,15 @@ Authorization: Bearer <token>
         "deckId": "123e4567-e89b-12d3-a456-426614174002",
         "front": "What is a closure in JavaScript?",
         "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
-        "status": "new",
-        "reviewAt": null,
+        "state": 0,
+        "due": null,
+        "stability": 0,
+        "difficulty": 0,
+        "elapsed_days": 0,
+        "scheduled_days": 0,
+        "reps": 0,
+        "lapses": 0,
+        "last_review": null,
         "createdAt": "2023-01-01T00:00:00.000Z",
         "updatedAt": "2023-01-01T00:00:00.000Z",
         "deckName": "JavaScript Fundamentals"
@@ -98,8 +126,15 @@ Authorization: Bearer <token>
         "deckId": "123e4567-e89b-12d3-a456-426614174002",
         "front": "What is a closure in JavaScript?",
         "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
-        "status": "new",
-        "reviewAt": null,
+        "state": 0,
+        "due": null,
+        "stability": 0,
+        "difficulty": 0,
+        "elapsed_days": 0,
+        "scheduled_days": 0,
+        "reps": 0,
+        "lapses": 0,
+        "last_review": null,
         "createdAt": "2023-01-01T00:00:00.000Z",
         "updatedAt": "2023-01-01T00:00:00.000Z",
         "deckName": "JavaScript Fundamentals"
@@ -135,8 +170,15 @@ Authorization: Bearer <token>
       "deckId": "123e4567-e89b-12d3-a456-426614174002",
       "front": "What is a closure in JavaScript?",
       "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
-      "status": "new",
-      "reviewAt": null,
+      "state": 0,
+      "due": null,
+      "stability": 0,
+      "difficulty": 0,
+      "elapsed_days": 0,
+      "scheduled_days": 0,
+      "reps": 0,
+      "lapses": 0,
+      "last_review": null,
       "createdAt": "2023-01-01T00:00:00.000Z",
       "updatedAt": "2023-01-01T00:00:00.000Z",
       "deckName": "JavaScript Fundamentals"
@@ -163,9 +205,8 @@ Body:
 ```json
 {
   "front": "What is a closure in JavaScript?",
-  "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
-  "status": "new",  // Optional, defaults to "new"
-  "reviewAt": null  // Optional, defaults to null
+  "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope."
+  // FSRS fields are automatically initialized with default values
 }
 ```
 
@@ -181,8 +222,15 @@ Body:
       "deckId": "123e4567-e89b-12d3-a456-426614174002",
       "front": "What is a closure in JavaScript?",
       "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
-      "status": "new",
-      "reviewAt": null,
+      "state": 0,
+      "due": null,
+      "stability": 0,
+      "difficulty": 0,
+      "elapsed_days": 0,
+      "scheduled_days": 0,
+      "reps": 0,
+      "lapses": 0,
+      "last_review": null,
       "createdAt": "2023-01-01T00:00:00.000Z",
       "updatedAt": "2023-01-01T00:00:00.000Z",
       "deckName": "JavaScript Fundamentals"
@@ -209,9 +257,8 @@ Body:
 ```json
 {
   "front": "Updated front content",  // Optional
-  "back": "Updated back content",    // Optional
-  "status": "learning",              // Optional
-  "reviewAt": "2023-01-02T00:00:00.000Z"  // Optional
+  "back": "Updated back content"     // Optional
+  // FSRS fields are typically updated by the review endpoint, not directly
 }
 ```
 
@@ -227,8 +274,15 @@ Body:
       "deckId": "123e4567-e89b-12d3-a456-426614174002",
       "front": "Updated front content",
       "back": "Updated back content",
-      "status": "learning",
-      "reviewAt": "2023-01-02T00:00:00.000Z",
+      "state": 0,
+      "due": null,
+      "stability": 0,
+      "difficulty": 0,
+      "elapsed_days": 0,
+      "scheduled_days": 0,
+      "reps": 0,
+      "lapses": 0,
+      "last_review": null,
       "createdAt": "2023-01-01T00:00:00.000Z",
       "updatedAt": "2023-01-01T01:00:00.000Z",
       "deckName": "JavaScript Fundamentals"
@@ -266,8 +320,8 @@ GET /api/cards/review
 ```
 
 This endpoint returns cards that are due for review, including:
-- Cards with status "new"
-- Cards with status "review" and a reviewAt date in the past
+- Cards with state 0 (new)
+- Cards with state 1, 2, or 3 and a due date in the past
 
 #### Request
 
@@ -294,14 +348,74 @@ limit: number (optional, default: 20) - Maximum number of cards to return
         "deckId": "123e4567-e89b-12d3-a456-426614174002",
         "front": "What is a closure in JavaScript?",
         "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
-        "status": "new",
-        "reviewAt": null,
+        "state": 0,
+        "due": null,
+        "stability": 0,
+        "difficulty": 0,
+        "elapsed_days": 0,
+        "scheduled_days": 0,
+        "reps": 0,
+        "lapses": 0,
+        "last_review": null,
         "createdAt": "2023-01-01T00:00:00.000Z",
         "updatedAt": "2023-01-01T00:00:00.000Z",
         "deckName": "JavaScript Fundamentals"
       },
       // More cards...
     ]
+  }
+}
+```
+
+### Submit Card Review
+
+```
+POST /api/cards/:id/review
+```
+
+This endpoint processes a card review and updates the FSRS parameters accordingly.
+
+#### Request
+
+Headers:
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+Body:
+```json
+{
+  "rating": 1,  // Rating from 1-4: 1=Again, 2=Hard, 3=Good, 4=Easy
+  "reviewedAt": "2023-01-01T00:00:00.000Z"  // Optional, defaults to current time
+}
+```
+
+#### Response
+
+```json
+{
+  "status": "success",
+  "data": {
+    "card": {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "userId": "123e4567-e89b-12d3-a456-426614174001",
+      "deckId": "123e4567-e89b-12d3-a456-426614174002",
+      "front": "What is a closure in JavaScript?",
+      "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
+      "state": 2,
+      "due": "2023-01-05T00:00:00.000Z",
+      "stability": 4.93,
+      "difficulty": 0.3,
+      "elapsed_days": 0,
+      "scheduled_days": 4,
+      "reps": 1,
+      "lapses": 0,
+      "last_review": "2023-01-01T00:00:00.000Z",
+      "createdAt": "2023-01-01T00:00:00.000Z",
+      "updatedAt": "2023-01-01T00:00:00.000Z",
+      "deckName": "JavaScript Fundamentals"
+    }
   }
 }
 ```
@@ -347,7 +461,7 @@ limit: number (optional, default: 20) - Maximum number of cards to return
 ## Implementation Notes
 
 - Cards are always associated with both a user and a deck
-- The status field helps implement a spaced repetition system
-- The reviewAt field determines when a card should be reviewed next
+- The FSRS algorithm is used to implement an optimized spaced repetition system
+- The due field determines when a card should be reviewed next (null for new cards)
 - Row Level Security (RLS) ensures users can only access their own cards
 - The deckName field is included in all card responses for convenience 

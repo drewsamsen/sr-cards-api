@@ -5,8 +5,15 @@ export interface CardDB {
   deck_id: string;
   front: string;
   back: string;
-  status: 'new' | 'learning' | 'review';
-  review_at: string | null;
+  state: number; // 0=New, 1=Learning, 2=Review, 3=Relearning
+  due: string | null;
+  stability: number;
+  difficulty: number;
+  elapsed_days: number;
+  scheduled_days: number;
+  reps: number;
+  lapses: number;
+  last_review: string | null;
   created_at: string;
   updated_at: string;
   deck_name?: string; // Optional field from join with decks table
@@ -19,8 +26,15 @@ export interface Card {
   deckId: string;
   front: string;
   back: string;
-  status: 'new' | 'learning' | 'review';
-  reviewAt: string | null;
+  state: number; // 0=New, 1=Learning, 2=Review, 3=Relearning
+  due: string | null;
+  stability: number;
+  difficulty: number;
+  elapsedDays: number;
+  scheduledDays: number;
+  reps: number;
+  lapses: number;
+  lastReview: string | null;
   createdAt: string;
   updatedAt: string;
   deckName?: string; // Optional field from join with decks table
@@ -30,13 +44,17 @@ export interface Card {
 export interface CreateCardDTO {
   front: string;
   back: string;
-  status?: 'new' | 'learning' | 'review';
-  reviewAt?: string;
+  // FSRS fields are initialized with default values in the database
 }
 
 export interface UpdateCardDTO {
   front?: string;
   back?: string;
-  status?: 'new' | 'learning' | 'review';
-  reviewAt?: string | null;
+  // FSRS fields are typically updated by the review endpoint, not directly
+}
+
+// Review DTO
+export interface CardReviewDTO {
+  rating: 1 | 2 | 3 | 4; // 1=Again, 2=Hard, 3=Good, 4=Easy
+  reviewedAt?: string; // Optional, defaults to current time
 } 

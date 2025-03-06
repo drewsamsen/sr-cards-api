@@ -140,6 +140,10 @@ async function createCardsForDeck(token, deckId, cards) {
       results.push(response.data.data.card);
     } catch (error) {
       console.error(`${colors.red}✗ Error creating card: ${error.message}${colors.reset}`);
+      if (error.response) {
+        console.error(`${colors.red}Status: ${error.response.status}${colors.reset}`);
+        console.error(`${colors.red}Response data: ${JSON.stringify(error.response.data)}${colors.reset}`);
+      }
     }
   }
   

@@ -68,7 +68,7 @@ export const cardController = {
   createCard: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
     const deckId = req.params.deckId;
-    const { front, back, status, reviewAt } = req.body;
+    const { front, back } = req.body;
 
     if (!front || !back) {
       return res.status(400).json({
@@ -81,9 +81,6 @@ export const cardController = {
       front,
       back,
     };
-
-    if (status) cardData.status = status;
-    if (reviewAt) cardData.reviewAt = reviewAt;
 
     const card = await cardService.createCard(cardData, deckId, userId);
 
@@ -101,9 +98,9 @@ export const cardController = {
   updateCard: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
     const cardId = req.params.id;
-    const { front, back, status, reviewAt } = req.body;
+    const { front, back } = req.body;
 
-    if (!front && !back && !status && reviewAt === undefined) {
+    if (!front && !back) {
       return res.status(400).json({
         status: 'error',
         message: 'At least one field to update is required',
@@ -113,8 +110,6 @@ export const cardController = {
     const cardData: UpdateCardDTO = {};
     if (front !== undefined) cardData.front = front;
     if (back !== undefined) cardData.back = back;
-    if (status !== undefined) cardData.status = status;
-    if (reviewAt !== undefined) cardData.reviewAt = reviewAt;
 
     const card = await cardService.updateCard(cardId, cardData, userId);
 
