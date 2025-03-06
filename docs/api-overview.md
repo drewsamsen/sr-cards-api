@@ -83,6 +83,11 @@ The API does not currently implement versioning. Future versions may be accessed
 - `POST /api/auth/logout`: Logout a user
 - `GET /api/auth/me`: Get the current user's information
 
+### User Settings
+
+- `GET /api/user-settings`: Get the current user's settings
+- `PUT /api/user-settings`: Update the current user's settings
+
 ### Decks
 
 - `GET /api/decks`: Get all decks for the current user
@@ -107,6 +112,7 @@ The API does not currently implement versioning. Future versions may be accessed
 
 For detailed information about each endpoint, refer to the specific documentation:
 - [Authentication](./authentication.md)
+- [User Settings](./user-settings.md)
 - [Decks](./decks.md)
 - [Cards](./cards.md)
 - [Health Check](./health.md)
