@@ -198,8 +198,8 @@ export const deckService = {
     // Remove the nested decks object before converting
     delete cardWithDeckName.decks;
     
-    // Calculate review metrics using the FSRS service
-    const reviewMetrics = fsrsService.calculateReviewMetrics(randomCard);
+    // Calculate review metrics using the FSRS service with user-specific parameters
+    const reviewMetrics = await fsrsService.calculateReviewMetrics(randomCard, userId);
     
     return { 
       deck, 

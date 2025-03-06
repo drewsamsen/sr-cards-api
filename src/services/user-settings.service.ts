@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../config/supabase';
 import { snakeToCamelObject } from '../utils';
 import defaultSettingsConfig from '../config/default-settings.json';
+import { fsrsService } from './fsrs.service';
 
 export interface UserSettings {
   id: string;
@@ -119,6 +120,10 @@ export const userSettingsService = {
         console.error(`Error updating user settings: ${error.message}`);
         return null;
       }
+
+      // Clear the FSRS cache for this user to ensure fresh settings are used
+      fsrsService.clearFSRSCache(userId);
+      console.log(`Cleared FSRS cache for user ${userId} after settings update`);
 
       return snakeToCamelObject(data) as UserSettings;
     } catch (error: any) {

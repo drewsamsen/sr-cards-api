@@ -232,9 +232,10 @@ export const cardService = {
     }
 
     // Process the review with FSRS - this will throw an error if FSRS calculation fails
-    const processedReview = fsrsService.processReview(
+    const processedReview = await fsrsService.processReview(
       card,
       reviewData.rating,
+      userId, // Pass userId to use user-specific FSRS parameters
       reviewData.reviewedAt ? new Date(reviewData.reviewedAt) : undefined
     );
 
