@@ -154,4 +154,33 @@ export const deckController = {
       data: null,
     });
   }),
+
+  /**
+   * Get a random card from a deck for review
+   */
+  getDeckReview: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user.id;
+    const slug = req.params.slug;
+
+    const result = await deckService.getRandomCardForReview(slug, userId);
+
+    if (!result.deck) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Deck not found',
+      });
+    }
+
+    if (!result.card) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'No cards found in this deck',
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: result,
+    });
+  }),
 }; 

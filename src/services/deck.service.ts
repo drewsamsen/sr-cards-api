@@ -1,6 +1,23 @@
 import { supabaseAdmin } from '../config/supabase';
 import { Deck, DeckDB, CreateDeckDTO, UpdateDeckDTO } from '../models/deck.model';
+import { Card } from '../models/card.model';
 import { snakeToCamelObject, camelToSnakeObject } from '../utils';
+
+// Define a type for the review metrics
+interface ReviewMetrics {
+  totalCards: number;
+  cardsRemaining: number;
+  progress: number;
+  streakDays: number;
+  nextDueDate: Date | null;
+}
+
+// Define a type for the review result
+interface ReviewResult {
+  deck: Deck | null;
+  card: Card | null;
+  reviewMetrics?: ReviewMetrics;
+}
 
 export const deckService = {
   /**
@@ -143,5 +160,65 @@ export const deckService = {
     }
 
     return true;
+  },
+
+  /**
+   * Get a random card from a deck for review
+   */
+  async getRandomCardForReview(slug: string, userId: string): Promise<ReviewResult> {
+    // First, get the deck by slug
+    const deck = await this.getDeckBySlug(slug, userId);
+    
+    if (!deck) {
+      return { deck: null, card: null };
+    }
+    
+    // Get all cards for the deck
+    const { data, error } = await supabaseAdmin
+      .from('cards')
+      .select(`
+        *,
+        decks:deck_id (
+          name
+        )
+      `)
+      .eq('deck_id', deck.id)
+      .eq('user_id', userId);
+      
+    if (error) {
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      return { deck, card: null };
+    }
+    
+    // Select a random card
+    const randomIndex = Math.floor(Math.random() * data.length);
+    const randomCard = data[randomIndex];
+    
+    // Add deck name and convert to camelCase
+    const cardWithDeckName = {
+      ...randomCard,
+      deck_name: randomCard.decks?.name
+    };
+    
+    // Remove the nested decks object before converting
+    delete cardWithDeckName.decks;
+    
+    // Calculate additional metrics for the card
+    const reviewMetrics: ReviewMetrics = {
+      totalCards: data.length,
+      cardsRemaining: data.length - 1, // Just a placeholder, in a real app you'd count cards not yet reviewed
+      progress: Math.round((1 / data.length) * 100), // Simple progress calculation
+      streakDays: 1, // Placeholder, would be calculated from user's review history
+      nextDueDate: randomCard.due ? new Date(randomCard.due) : null
+    };
+    
+    return { 
+      deck, 
+      card: snakeToCamelObject(cardWithDeckName) as Card,
+      reviewMetrics
+    };
   }
 }; 

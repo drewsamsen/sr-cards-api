@@ -96,6 +96,7 @@ The following indexes are created for better performance:
 - `GET /api/decks`: Get all decks for the current user
 - `GET /api/decks/:id`: Get a specific deck by ID
 - `GET /api/decks/slug/:slug`: Get a specific deck by slug
+- `GET /api/decks/slug/:slug/review`: Get a random card from a deck for review with additional metrics
 - `POST /api/decks`: Create a new deck
 - `PUT /api/decks/:id`: Update a deck
 - `DELETE /api/decks/:id`: Delete a deck
@@ -186,6 +187,58 @@ Authorization: Bearer <jwt-token>
       "description": "Flashcards for JavaScript fundamentals",
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-04T12:00:00Z"
+    }
+  }
+}
+```
+
+### Get Random Card for Review
+
+**Request:**
+```http
+GET /api/decks/slug/javascript-basics/review
+Authorization: Bearer <jwt-token>
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "data": {
+    "deck": {
+      "id": "uuid-1",
+      "userId": "user-uuid",
+      "name": "JavaScript Basics",
+      "slug": "javascript-basics",
+      "description": "Flashcards for JavaScript fundamentals",
+      "createdAt": "2023-03-04T12:00:00Z",
+      "updatedAt": "2023-03-04T12:00:00Z"
+    },
+    "card": {
+      "id": "card-uuid-1",
+      "userId": "user-uuid",
+      "deckId": "uuid-1",
+      "front": "What is a closure in JavaScript?",
+      "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
+      "state": 0,
+      "due": null,
+      "stability": 0,
+      "difficulty": 0,
+      "elapsedDays": 0,
+      "scheduledDays": 0,
+      "reps": 0,
+      "lapses": 0,
+      "lastReview": null,
+      "createdAt": "2023-03-04T12:30:00Z",
+      "updatedAt": "2023-03-04T12:30:00Z",
+      "deckName": "JavaScript Basics"
+    },
+    "reviewMetrics": {
+      "totalCards": 25,
+      "cardsRemaining": 24,
+      "progress": 4,
+      "streakDays": 1,
+      "nextDueDate": null
     }
   }
 }
