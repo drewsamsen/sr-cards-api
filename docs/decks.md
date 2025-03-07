@@ -125,7 +125,8 @@ Authorization: Bearer <jwt-token>
         "description": "Flashcards for JavaScript fundamentals",
         "createdAt": "2023-03-04T12:00:00Z",
         "updatedAt": "2023-03-04T12:00:00Z",
-        "reviewCount": 5
+        "reviewCount": 5,
+        "totalCards": 20
       },
       {
         "id": "uuid-2",
@@ -135,7 +136,8 @@ Authorization: Bearer <jwt-token>
         "description": "All about React hooks and their usage",
         "createdAt": "2023-03-05T10:30:00Z",
         "updatedAt": "2023-03-05T10:30:00Z",
-        "reviewCount": 0
+        "reviewCount": 0,
+        "totalCards": 15
       }
     ]
   }
@@ -143,6 +145,7 @@ Authorization: Bearer <jwt-token>
 ```
 
 The `reviewCount` property indicates how many cards in the deck are ready for review (either new cards or cards with a due date in the past).
+The `totalCards` property shows the total number of cards in the deck.
 
 ### Get Deck by ID
 

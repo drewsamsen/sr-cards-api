@@ -22,5 +22,22 @@ export const cardReviewService = {
     }
 
     return count || 0;
+  },
+
+  /**
+   * Count total cards in a specific deck
+   */
+  async countTotalCards(deckId: string, userId: string): Promise<number> {
+    const { count, error } = await supabaseAdmin
+      .from('cards')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('deck_id', deckId);
+
+    if (error) {
+      throw error;
+    }
+
+    return count || 0;
   }
 }; 

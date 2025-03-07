@@ -33,13 +33,15 @@ export const deckService = {
     // Convert snake_case DB results to camelCase for API
     const decks = (data || []).map(deck => snakeToCamelObject(deck) as Deck);
     
-    // Add review count to each deck
+    // Add review count and total cards count to each deck
     for (const deck of decks) {
       try {
         deck.reviewCount = await cardReviewService.countReviewReadyCards(deck.id, userId);
+        deck.totalCards = await cardReviewService.countTotalCards(deck.id, userId);
       } catch (error) {
-        console.error(`Error counting review-ready cards for deck ${deck.id}:`, error);
+        console.error(`Error counting cards for deck ${deck.id}:`, error);
         deck.reviewCount = 0;
+        deck.totalCards = 0;
       }
     }
     
