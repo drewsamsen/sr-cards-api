@@ -103,9 +103,9 @@ export const deckController = {
   updateDeck: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
     const deckId = req.params.id;
-    const { name, description } = req.body;
+    const { name, description, slug } = req.body;
 
-    if (!name && description === undefined) {
+    if (!name && description === undefined && !slug) {
       return res.status(400).json({
         status: 'error',
         message: 'At least one field to update is required',
@@ -115,6 +115,7 @@ export const deckController = {
     const deckData: UpdateDeckDTO = {};
     if (name !== undefined) deckData.name = name;
     if (description !== undefined) deckData.description = description;
+    if (slug !== undefined) deckData.slug = slug;
 
     const deck = await deckService.updateDeck(deckId, deckData, userId);
 

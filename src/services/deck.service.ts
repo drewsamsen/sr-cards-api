@@ -132,6 +132,7 @@ export const deckService = {
     const updateData: Partial<DeckDB> = {};
     if (deckData.name !== undefined) updateData.name = deckData.name;
     if (deckData.description !== undefined) updateData.description = deckData.description;
+    if (deckData.slug !== undefined) updateData.slug = deckData.slug;
 
     const { data, error } = await supabaseAdmin
       .from('decks')

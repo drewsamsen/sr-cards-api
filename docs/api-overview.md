@@ -79,16 +79,27 @@ This API uses PATCH (rather than PUT) for update operations because:
 2. PATCH is more efficient as it only requires sending the fields that need to be changed
 3. It follows RESTful best practices for partial updates
 
-For example, when updating a card, you only need to send the fields you want to change:
+For example, when updating a deck, you can update any combination of fields:
 
 ```json
-PATCH /api/cards/:id
+PATCH /api/decks/:id
 {
-  "front": "Updated front content"
+  "name": "Updated name",
+  "slug": "custom-slug",
+  "description": "Updated description"
 }
 ```
 
-This will only update the front content while leaving all other fields unchanged.
+Or just a single field:
+
+```json
+PATCH /api/decks/:id
+{
+  "slug": "custom-slug"
+}
+```
+
+This will only update the specified fields while leaving all other fields unchanged.
 
 ## Rate Limiting
 

@@ -31,4 +31,5 @@ export interface CreateDeckDTO {
 export interface UpdateDeckDTO {
   name?: string;
   description?: string;
+  slug?: string;
 } 

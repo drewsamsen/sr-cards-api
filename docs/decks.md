@@ -344,7 +344,8 @@ Authorization: Bearer <jwt-token>
 
 {
   "name": "JavaScript Fundamentals",
-  "description": "Updated description for JavaScript fundamentals"
+  "description": "Updated description for JavaScript fundamentals",
+  "slug": "js-fundamentals"
 }
 ```
 
@@ -357,7 +358,7 @@ Authorization: Bearer <jwt-token>
       "id": "uuid-1",
       "userId": "user-uuid",
       "name": "JavaScript Fundamentals",
-      "slug": "javascript-fundamentals",
+      "slug": "js-fundamentals",
       "description": "Updated description for JavaScript fundamentals",
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-06T09:15:00Z"
@@ -387,7 +388,8 @@ Authorization: Bearer <jwt-token>
 ## Implementation Notes
 
 - Deck names must be unique per user
-- Slugs are automatically generated from the deck name
+- Slugs are automatically generated from the deck name when a deck is created
+- Slugs can be manually updated when updating a deck
 - The `updated_at` timestamp is automatically updated when a deck is modified
 - API responses use camelCase for property names (JavaScript convention)
 - Database uses snake_case for column names (PostgreSQL convention) 
