@@ -126,7 +126,8 @@ Authorization: Bearer <jwt-token>
         "createdAt": "2023-03-04T12:00:00Z",
         "updatedAt": "2023-03-04T12:00:00Z",
         "reviewCount": 5,
-        "totalCards": 20
+        "totalCards": 20,
+        "remainingReviews": 3
       },
       {
         "id": "uuid-2",
@@ -137,7 +138,8 @@ Authorization: Bearer <jwt-token>
         "createdAt": "2023-03-05T10:30:00Z",
         "updatedAt": "2023-03-05T10:30:00Z",
         "reviewCount": 0,
-        "totalCards": 15
+        "totalCards": 15,
+        "remainingReviews": 0
       }
     ]
   }
@@ -146,6 +148,7 @@ Authorization: Bearer <jwt-token>
 
 The `reviewCount` property indicates how many cards in the deck are ready for review (either new cards or cards with a due date in the past).
 The `totalCards` property shows the total number of cards in the deck.
+The `remainingReviews` property shows how many more cards the user can review today, taking into account both the user's daily limits and the actual availability of cards in the deck.
 
 ### Get Deck by ID
 

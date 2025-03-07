@@ -23,10 +23,13 @@ describe('User Settings Service', () => {
   });
 
   describe('updateUserSettings', () => {
-    it('should clear the FSRS cache when user settings are updated', async () => {
-      // Setup mock implementation for updateUserSettings
+    it('should clear the FSRS cache when settings are updated', async () => {
+      // Mock the fsrsService.clearFSRSCache method
+      const clearFSRSCacheSpy = jest.spyOn(fsrsService, 'clearFSRSCache');
+      
+      // Mock the updated settings
       const mockUpdatedSettings = {
-        id: 'test-id',
+        id: 'test-settings-id',
         userId: 'test-user-id',
         settings: {
           theme: 'dark',
@@ -35,6 +38,10 @@ describe('User Settings Service', () => {
             enabled: true,
             reminderTime: '18:00',
             reminderDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+          },
+          learning: {
+            newCardsPerDay: 5,
+            maxReviewsPerDay: 10
           },
           fsrsParams: {
             requestRetention: 0.9,

@@ -20,6 +20,7 @@ export interface Deck {
   updatedAt: string;
   reviewCount?: number; // Number of cards ready for review
   totalCards?: number;  // Total number of cards in the deck
+  remainingReviews?: number; // Number of cards that can be reviewed today (based on daily limits and available cards)
 }
 
 // Request DTOs (uses JavaScript camelCase convention)
