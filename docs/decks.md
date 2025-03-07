@@ -201,7 +201,7 @@ Authorization: Bearer <jwt-token>
 
 ### Get Random Card for Review
 
-This endpoint retrieves a random card from a deck that is either new (state=0) or due for review (due date in the past).
+This endpoint retrieves a random card from a deck that is either new (state=0) or due for review (due date in the past). It respects the user's daily limits for new cards and reviews per deck.
 
 **Request:**
 ```http
@@ -240,13 +240,48 @@ Authorization: Bearer <jwt-token>
       "lastReview": null,
       "createdAt": "2023-03-04T12:30:00Z",
       "updatedAt": "2023-03-04T12:30:00Z",
-      "deckName": "JavaScript Basics"
+      "deckName": "JavaScript Basics",
+      "deckSlug": "javascript-basics"
     },
     "reviewMetrics": {
       "again": "2023-03-05T12:30:00Z",
       "hard": "2023-03-07T12:30:00Z",
       "good": "2023-03-11T12:30:00Z",
       "easy": "2023-03-18T12:30:00Z"
+    },
+    "dailyProgress": {
+      "newCardsSeen": 3,
+      "newCardsLimit": 5,
+      "reviewCardsSeen": 8,
+      "reviewCardsLimit": 15,
+      "totalRemaining": 9
+    }
+  }
+}
+```
+
+**Response (Daily Limit Reached):**
+```json
+{
+  "status": "success",
+  "data": {
+    "deck": {
+      "id": "uuid-1",
+      "userId": "user-uuid",
+      "name": "JavaScript Basics",
+      "slug": "javascript-basics",
+      "description": "Flashcards for JavaScript fundamentals",
+      "createdAt": "2023-03-04T12:00:00Z",
+      "updatedAt": "2023-03-04T12:00:00Z"
+    },
+    "dailyLimitReached": true,
+    "message": "You've reached your daily review limits for this deck. Come back later!",
+    "dailyProgress": {
+      "newCardsSeen": 5,
+      "newCardsLimit": 5,
+      "reviewCardsSeen": 15,
+      "reviewCardsLimit": 15,
+      "totalRemaining": 0
     }
   }
 }
@@ -268,7 +303,14 @@ Authorization: Bearer <jwt-token>
     },
     "allCaughtUp": true,
     "message": "You're all caught up! No cards due for review at this time.",
-    "totalCards": 25
+    "totalCards": 25,
+    "dailyProgress": {
+      "newCardsSeen": 2,
+      "newCardsLimit": 5,
+      "reviewCardsSeen": 10,
+      "reviewCardsLimit": 15,
+      "totalRemaining": 8
+    }
   }
 }
 ```
@@ -288,7 +330,14 @@ Authorization: Bearer <jwt-token>
       "updatedAt": "2023-03-04T12:00:00Z"
     },
     "emptyDeck": true,
-    "message": "This deck doesn't have any cards yet. Add some cards to start reviewing!"
+    "message": "This deck doesn't have any cards yet. Add some cards to start reviewing!",
+    "dailyProgress": {
+      "newCardsSeen": 0,
+      "newCardsLimit": 5,
+      "reviewCardsSeen": 0,
+      "reviewCardsLimit": 15,
+      "totalRemaining": 20
+    }
   }
 }
 ```
@@ -300,7 +349,13 @@ The `reviewMetrics` object provides predicted due dates for the card based on di
 - `good`: When the card should be reviewed if rated "Good" (typically a week later)
 - `easy`: When the card should be reviewed if rated "Easy" (typically two weeks later)
 
-These dates follow spaced repetition principles, with longer intervals for better-remembered cards.
+The `dailyProgress` object provides information about the user's progress toward their daily limits:
+
+- `newCardsSeen`: Number of new cards reviewed in the last 24 hours
+- `newCardsLimit`: Maximum number of new cards allowed per day (from user settings)
+- `reviewCardsSeen`: Number of review cards reviewed in the last 24 hours
+- `reviewCardsLimit`: Maximum number of review cards allowed per day (from user settings)
+- `totalRemaining`: Total number of cards remaining before reaching daily limits
 
 ### Create a Deck
 

@@ -172,6 +172,18 @@ export const deckController = {
       });
     }
 
+    if (result.dailyLimitReached) {
+      return res.status(200).json({
+        status: 'success',
+        data: {
+          deck: result.deck,
+          dailyLimitReached: true,
+          message: result.message || "You've reached your daily review limits for this deck. Come back later!",
+          dailyProgress: result.dailyProgress
+        },
+      });
+    }
+
     if (result.allCaughtUp) {
       return res.status(200).json({
         status: 'success',
@@ -179,7 +191,8 @@ export const deckController = {
           deck: result.deck,
           allCaughtUp: true,
           message: "You're all caught up! No cards due for review at this time.",
-          totalCards: result.totalCards
+          totalCards: result.totalCards,
+          dailyProgress: result.dailyProgress
         },
       });
     }
@@ -191,6 +204,7 @@ export const deckController = {
           deck: result.deck,
           emptyDeck: true,
           message: "This deck doesn't have any cards yet. Add some cards to start reviewing!",
+          dailyProgress: result.dailyProgress
         },
       });
     }

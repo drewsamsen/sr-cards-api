@@ -322,7 +322,7 @@ Authorization: Bearer <token>
 POST /api/cards/:id/review
 ```
 
-This endpoint processes a card review and updates the FSRS parameters accordingly.
+This endpoint processes a card review and updates the FSRS parameters accordingly. It respects the user's daily limits for new cards and reviews per deck.
 
 #### Request
 
@@ -340,7 +340,7 @@ Body:
 }
 ```
 
-#### Response
+#### Response (Success)
 
 ```json
 {
@@ -363,7 +363,27 @@ Body:
       "lastReview": "2023-01-01T00:00:00.000Z",
       "createdAt": "2023-01-01T00:00:00.000Z",
       "updatedAt": "2023-01-01T00:00:00.000Z",
-      "deckName": "JavaScript Fundamentals"
+      "deckName": "JavaScript Fundamentals",
+      "deckSlug": "javascript-fundamentals"
+    }
+  }
+}
+```
+
+#### Response (Daily Limit Reached)
+
+```json
+{
+  "status": "success",
+  "data": {
+    "dailyLimitReached": true,
+    "message": "You've reached your daily limit for new cards. Come back later!",
+    "dailyProgress": {
+      "newCardsSeen": 5,
+      "newCardsLimit": 5,
+      "reviewCardsSeen": 10,
+      "reviewCardsLimit": 15,
+      "totalRemaining": 5
     }
   }
 }

@@ -17,6 +17,14 @@ export interface ReviewLog {
   review: string;
 }
 
+// Interface for review count parameters
+export interface ReviewCountParams {
+  userId: string;
+  deckId?: string;
+  timeWindow?: number; // in hours, defaults to 24
+  cardType?: 'new' | 'review' | 'all'; // defaults to 'all'
+}
+
 export const logService = {
   /**
    * Create a new review log
@@ -53,5 +61,88 @@ export const logService = {
 
     // Convert snake_case to camelCase
     return (data || []).map(log => snakeToCamelObject(log) as ReviewLog);
+  },
+
+  /**
+   * Get the deck ID for a card
+   */
+  async getDeckIdForCard(cardId: string): Promise<string | null> {
+    const { data, error } = await supabaseAdmin
+      .from('cards')
+      .select('deck_id')
+      .eq('id', cardId)
+      .single();
+
+    if (error) {
+      console.error('Error getting deck ID for card:', error);
+      return null;
+    }
+
+    return data?.deck_id || null;
+  },
+
+  /**
+   * Count reviews by type within a time window
+   * @param params Parameters for counting reviews
+   * @returns Number of reviews matching the criteria
+   */
+  async getReviewCount(params: ReviewCountParams): Promise<number> {
+    const { 
+      userId, 
+      deckId, 
+      timeWindow = 24, 
+      cardType = 'all' 
+    } = params;
+
+    // Calculate the timestamp for the start of the time window
+    const timeAgo = new Date();
+    timeAgo.setHours(timeAgo.getHours() - timeWindow);
+    
+    // Start building the query
+    let query = supabaseAdmin
+      .from('logs')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', timeAgo.toISOString());
+    
+    // If a deck ID is provided, we need to join with the cards table
+    // to filter by deck_id
+    if (deckId) {
+      // We need to get card IDs for the specified deck
+      const { data: cardIds, error: cardError } = await supabaseAdmin
+        .from('cards')
+        .select('id')
+        .eq('deck_id', deckId)
+        .eq('user_id', userId);
+      
+      if (cardError) {
+        console.error('Error getting card IDs for deck:', cardError);
+        return 0;
+      }
+      
+      if (!cardIds || cardIds.length === 0) {
+        return 0; // No cards in this deck
+      }
+      
+      // Add the card IDs to the query
+      query = query.in('card_id', cardIds.map(card => card.id));
+    }
+    
+    // Add filter for card type if specified
+    if (cardType === 'new') {
+      query = query.eq('state', 0);
+    } else if (cardType === 'review') {
+      query = query.gt('state', 0);
+    }
+    
+    // Execute the query
+    const { count, error } = await query;
+    
+    if (error) {
+      console.error('Error counting reviews:', error);
+      return 0;
+    }
+    
+    return count || 0;
   }
 }; 

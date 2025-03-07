@@ -174,47 +174,55 @@ export const cardController = {
   reviewCard: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
     const cardId = req.params.id;
-    const { rating: rawRating, reviewedAt } = req.body;
-    
-    console.log('Review request received:', {
-      userId,
-      cardId,
-      rating: rawRating,
-      reviewedAt,
-      body: req.body
-    });
+    const { rating, reviewedAt } = req.body;
 
-    // Convert rating to number if it's a string
-    const rating = typeof rawRating === 'string' ? parseInt(rawRating, 10) : rawRating;
-
-    if (rating === undefined || isNaN(rating) || ![1, 2, 3, 4].includes(rating)) {
+    // Validate rating
+    if (!rating || rating < 1 || rating > 4) {
       return res.status(400).json({
         status: 'error',
         message: 'Valid rating (1-4) is required',
       });
     }
 
+    // Prepare review data
     const reviewData: CardReviewDTO = {
       rating,
-      reviewedAt: reviewedAt || new Date().toISOString(),
+    };
+    
+    // Add reviewedAt if provided
+    if (reviewedAt) {
+      reviewData.reviewedAt = reviewedAt;
     };
     
     console.log('Review data prepared:', reviewData);
 
     try {
-      const card = await cardService.submitCardReview(cardId, reviewData, userId);
+      const result = await cardService.submitCardReview(cardId, reviewData, userId);
 
-      if (!card) {
+      if (!result) {
         return res.status(404).json({
           status: 'error',
           message: 'Card not found',
         });
       }
 
+      // Check if the result indicates a daily limit has been reached
+      if ('dailyLimitReached' in result) {
+        return res.status(200).json({
+          status: 'success',
+          data: {
+            dailyLimitReached: result.dailyLimitReached,
+            message: result.message,
+            dailyProgress: result.dailyProgress
+          },
+        });
+      }
+
+      // Normal card review response
       res.status(200).json({
         status: 'success',
         data: {
-          card,
+          card: result,
         },
       });
     } catch (error) {

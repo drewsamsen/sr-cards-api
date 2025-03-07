@@ -4,6 +4,9 @@ import { Card } from '../models/card.model';
 import { snakeToCamelObject, camelToSnakeObject } from '../utils';
 import { fsrsService, ReviewMetrics } from './fsrs.service';
 import { cardReviewService } from './card-review.service';
+import { logService } from './log.service';
+import { userSettingsService } from './user-settings.service';
+import { DailyProgressResponse } from '../models/daily-progress.model';
 
 // Define a type for the review result
 interface ReviewResult {
@@ -13,6 +16,9 @@ interface ReviewResult {
   allCaughtUp?: boolean;
   totalCards?: number;
   emptyDeck?: boolean;
+  dailyProgress?: DailyProgressResponse;
+  dailyLimitReached?: boolean;
+  message?: string;
 }
 
 export const deckService = {
@@ -184,21 +190,86 @@ export const deckService = {
       return { deck: null, card: null };
     }
     
+    // Get user settings to check daily limits
+    const userSettings = await userSettingsService.getUserSettings(userId);
+    if (!userSettings) {
+      // If no settings, use default values
+      console.warn(`No user settings found for user ${userId}, using defaults`);
+    }
+    
+    const newCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
+    const reviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
+    
+    // Get counts of cards reviewed in the last 24 hours
+    const newCardsCount = await logService.getReviewCount({
+      userId,
+      deckId: deck.id,
+      timeWindow: 24,
+      cardType: 'new'
+    });
+    
+    const reviewCardsCount = await logService.getReviewCount({
+      userId,
+      deckId: deck.id,
+      timeWindow: 24,
+      cardType: 'review'
+    });
+    
+    // Calculate remaining cards
+    const newCardsRemaining = Math.max(0, newCardsLimit - newCardsCount);
+    const reviewCardsRemaining = Math.max(0, reviewCardsLimit - reviewCardsCount);
+    const totalRemaining = newCardsRemaining + reviewCardsRemaining;
+    
+    // Create daily progress object
+    const dailyProgress: DailyProgressResponse = {
+      newCardsSeen: newCardsCount,
+      newCardsLimit,
+      reviewCardsSeen: reviewCardsCount,
+      reviewCardsLimit,
+      totalRemaining
+    };
+    
+    // Check if daily limits are reached
+    if (totalRemaining === 0) {
+      return {
+        deck,
+        card: null,
+        dailyProgress,
+        dailyLimitReached: true,
+        message: "You've reached your daily review limit for this deck. Great work!"
+      };
+    }
+    
+    // Determine what types of cards to show
+    const canShowNewCards = newCardsRemaining > 0;
+    const canShowReviewCards = reviewCardsRemaining > 0;
+    
     // Get current date for comparison
     const now = new Date().toISOString();
     
-    // Get cards that are either new (state=0) or due for review (due date in the past)
+    // Build the filter based on what types of cards we can show
+    let filter = '';
+    if (canShowNewCards && canShowReviewCards) {
+      filter = `state.eq.0,and(state.in.(1,2,3),due.lte.${now})`;
+    } else if (canShowNewCards) {
+      filter = 'state.eq.0';
+    } else if (canShowReviewCards) {
+      filter = `and(state.in.(1,2,3),due.lte.${now})`;
+    }
+    
+    // Get cards that match our filter
     const { data, error } = await supabaseAdmin
       .from('cards')
       .select(`
         *,
         decks:deck_id (
-          name
+          name,
+          slug
         )
       `)
       .eq('deck_id', deck.id)
       .eq('user_id', userId)
-      .or(`state.eq.0,due.lt.${now},due.is.null`);
+      .or(filter);
       
     if (error) {
       throw error;
@@ -223,7 +294,8 @@ export const deckService = {
           deck, 
           card: null, 
           allCaughtUp: true,
-          totalCards: count
+          totalCards: count,
+          dailyProgress
         };
       }
       
@@ -231,7 +303,8 @@ export const deckService = {
       return { 
         deck, 
         card: null,
-        emptyDeck: true
+        emptyDeck: true,
+        dailyProgress
       };
     }
     
@@ -239,22 +312,24 @@ export const deckService = {
     const randomIndex = Math.floor(Math.random() * data.length);
     const randomCard = data[randomIndex];
     
-    // Add deck name and convert to camelCase
-    const cardWithDeckName = {
+    // Add deck name and slug and convert to camelCase
+    const cardWithDeckInfo = {
       ...randomCard,
-      deck_name: randomCard.decks?.name
+      deck_name: randomCard.decks?.name,
+      deck_slug: randomCard.decks?.slug
     };
     
     // Remove the nested decks object before converting
-    delete cardWithDeckName.decks;
+    delete cardWithDeckInfo.decks;
     
     // Calculate review metrics using the FSRS service with user-specific parameters
     const reviewMetrics = await fsrsService.calculateReviewMetrics(randomCard, userId);
     
     return { 
       deck, 
-      card: snakeToCamelObject(cardWithDeckName) as Card,
-      reviewMetrics
+      card: snakeToCamelObject(cardWithDeckInfo) as Card,
+      reviewMetrics,
+      dailyProgress
     };
   }
 }; 

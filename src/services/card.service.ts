@@ -3,6 +3,8 @@ import { Card, CardDB, CreateCardDTO, UpdateCardDTO, CardReviewDTO } from '../mo
 import { snakeToCamelObject, camelToSnakeObject } from '../utils';
 import { fsrsService } from './fsrs.service';
 import { logService } from './log.service';
+import { userSettingsService } from './user-settings.service';
+import { DailyProgressResponse } from '../models/daily-progress.model';
 
 export const cardService = {
   /**
@@ -232,12 +234,59 @@ export const cardService = {
   /**
    * Submit a review for a card
    */
-  async submitCardReview(cardId: string, reviewData: CardReviewDTO, userId: string): Promise<Card | null> {
+  async submitCardReview(cardId: string, reviewData: CardReviewDTO, userId: string): Promise<Card | null | { dailyLimitReached: boolean, message: string, dailyProgress: DailyProgressResponse }> {
     // First check if the card exists and belongs to the user
     const card = await this.getCardById(cardId, userId);
     
     if (!card) {
       return null;
+    }
+
+    // Check if the user has reached their daily limits
+    // Get user settings
+    const userSettings = await userSettingsService.getUserSettings(userId);
+    if (!userSettings) {
+      console.warn(`No user settings found for user ${userId}, using defaults`);
+    }
+    
+    const newCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
+    const reviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
+    
+    // Determine if this is a new card or a review card
+    const isNewCard = card.state === 0;
+    
+    // Get counts of cards reviewed in the last 24 hours
+    const newCardsCount = await logService.getReviewCount({
+      userId,
+      deckId: card.deckId,
+      timeWindow: 24,
+      cardType: 'new'
+    });
+    
+    const reviewCardsCount = await logService.getReviewCount({
+      userId,
+      deckId: card.deckId,
+      timeWindow: 24,
+      cardType: 'review'
+    });
+    
+    // Create daily progress object
+    const dailyProgress: DailyProgressResponse = {
+      newCardsSeen: newCardsCount,
+      newCardsLimit,
+      reviewCardsSeen: reviewCardsCount,
+      reviewCardsLimit,
+      totalRemaining: Math.max(0, newCardsLimit - newCardsCount) + Math.max(0, reviewCardsLimit - reviewCardsCount)
+    };
+    
+    // Check if the user has reached their daily limit for this type of card
+    if ((isNewCard && newCardsCount >= newCardsLimit) || 
+        (!isNewCard && reviewCardsCount >= reviewCardsLimit)) {
+      return {
+        dailyLimitReached: true,
+        message: `You've reached your daily limit for ${isNewCard ? 'new' : 'review'} cards. Come back later!`,
+        dailyProgress
+      };
     }
 
     // Process the review with FSRS - this will throw an error if FSRS calculation fails
