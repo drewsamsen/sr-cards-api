@@ -9,6 +9,9 @@ interface ReviewResult {
   deck: Deck | null;
   card: Card | null;
   reviewMetrics?: ReviewMetrics;
+  allCaughtUp?: boolean;
+  totalCards?: number;
+  emptyDeck?: boolean;
 }
 
 export const deckService = {
@@ -165,7 +168,10 @@ export const deckService = {
       return { deck: null, card: null };
     }
     
-    // Get all cards for the deck
+    // Get current date for comparison
+    const now = new Date().toISOString();
+    
+    // Get cards that are either new (state=0) or due for review (due date in the past)
     const { data, error } = await supabaseAdmin
       .from('cards')
       .select(`
@@ -175,17 +181,45 @@ export const deckService = {
         )
       `)
       .eq('deck_id', deck.id)
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .or(`state.eq.0,due.lt.${now},due.is.null`);
       
     if (error) {
       throw error;
     }
     
+    // Check if there are no cards ready for review
     if (!data || data.length === 0) {
-      return { deck, card: null };
+      // Check if there are any cards in the deck at all
+      const { count, error: countError } = await supabaseAdmin
+        .from('cards')
+        .select('*', { count: 'exact', head: true })
+        .eq('deck_id', deck.id)
+        .eq('user_id', userId);
+        
+      if (countError) {
+        throw countError;
+      }
+      
+      // If there are cards but none ready for review, return a special status
+      if (count && count > 0) {
+        return { 
+          deck, 
+          card: null, 
+          allCaughtUp: true,
+          totalCards: count
+        };
+      }
+      
+      // If there are no cards at all
+      return { 
+        deck, 
+        card: null,
+        emptyDeck: true
+      };
     }
     
-    // Select a random card
+    // Select a random card from the filtered results
     const randomIndex = Math.floor(Math.random() * data.length);
     const randomCard = data[randomIndex];
     

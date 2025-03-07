@@ -194,13 +194,15 @@ Authorization: Bearer <jwt-token>
 
 ### Get Random Card for Review
 
+This endpoint retrieves a random card from a deck that is either new (state=0) or due for review (due date in the past).
+
 **Request:**
 ```http
 GET /api/decks/slug/javascript-basics/review
 Authorization: Bearer <jwt-token>
 ```
 
-**Response:**
+**Response (Card Available):**
 ```json
 {
   "status": "success",
@@ -239,6 +241,47 @@ Authorization: Bearer <jwt-token>
       "good": "2023-03-11T12:30:00Z",
       "easy": "2023-03-18T12:30:00Z"
     }
+  }
+}
+```
+
+**Response (All Caught Up):**
+```json
+{
+  "status": "success",
+  "data": {
+    "deck": {
+      "id": "uuid-1",
+      "userId": "user-uuid",
+      "name": "JavaScript Basics",
+      "slug": "javascript-basics",
+      "description": "Flashcards for JavaScript fundamentals",
+      "createdAt": "2023-03-04T12:00:00Z",
+      "updatedAt": "2023-03-04T12:00:00Z"
+    },
+    "allCaughtUp": true,
+    "message": "You're all caught up! No cards due for review at this time.",
+    "totalCards": 25
+  }
+}
+```
+
+**Response (Empty Deck):**
+```json
+{
+  "status": "success",
+  "data": {
+    "deck": {
+      "id": "uuid-1",
+      "userId": "user-uuid",
+      "name": "JavaScript Basics",
+      "slug": "javascript-basics",
+      "description": "Flashcards for JavaScript fundamentals",
+      "createdAt": "2023-03-04T12:00:00Z",
+      "updatedAt": "2023-03-04T12:00:00Z"
+    },
+    "emptyDeck": true,
+    "message": "This deck doesn't have any cards yet. Add some cards to start reviewing!"
   }
 }
 ```

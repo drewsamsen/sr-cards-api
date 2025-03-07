@@ -17,11 +17,11 @@ A card represents a flashcard with front and back content, belonging to a specif
   "due": "timestamp | null",
   "stability": 0,
   "difficulty": 0,
-  "elapsed_days": 0,
-  "scheduled_days": 0,
+  "elapsedDays": 0,
+  "scheduledDays": 0,
   "reps": 0,
   "lapses": 0,
-  "last_review": "timestamp | null",
+  "lastReview": "timestamp | null",
   "createdAt": "timestamp",
   "updatedAt": "timestamp",
   "deckName": "string"
@@ -42,25 +42,14 @@ This API implements the Free Spaced Repetition Scheduler (FSRS) algorithm for op
 
 - `stability`: A measure of how well the information is retained
 - `difficulty`: Reflects the inherent difficulty of the card content
-- `elapsed_days` / `elapsedDays`: Days since the card was last reviewed
-- `scheduled_days` / `scheduledDays`: The interval at which the card is next scheduled
+- `elapsedDays`: Days since the card was last reviewed
+- `scheduledDays`: The interval at which the card is next scheduled
 - `reps`: Total number of times the card has been reviewed
 - `lapses`: Times the card was forgotten or remembered incorrectly
-- `last_review` / `lastReview`: The most recent review date, if applicable
+- `lastReview`: The most recent review date, if applicable
 - `due`: Date when the card is next due for review (null for new cards)
 
-> **Note**: The API supports both snake_case (`elapsed_days`, `scheduled_days`, `last_review`) and camelCase (`elapsedDays`, `scheduledDays`, `lastReview`) property naming conventions for compatibility with different client implementations.
-
-### Implementation Details
-
-The FSRS service internally uses the `ts-fsrs` package to implement the algorithm. The service includes:
-
-- Support for both snake_case and camelCase property naming conventions
-- User-specific FSRS parameters retrieved from user settings
-- Caching of FSRS instances for performance optimization
-- Automatic conversion between database card format and FSRS card format
-
-The service handles type conversions and ensures that all required fields are properly formatted before processing reviews or calculating metrics.
+> **Note**: While the API returns camelCase property names (`elapsedDays`, `scheduledDays`, `lastReview`), the FSRS service internally supports both snake_case (`elapsed_days`, `scheduled_days`, `last_review`) and camelCase naming conventions for compatibility with different client implementations and the underlying ts-fsrs package.
 
 ## API Endpoints
 
@@ -326,60 +315,6 @@ Authorization: Bearer <token>
 }
 ```
 
-### Get Cards Due for Review
-
-```
-GET /api/cards/review
-```
-
-This endpoint returns cards that are due for review, including:
-- Cards with state 0 (new)
-- Cards with state 1, 2, or 3 and a due date in the past
-
-#### Request
-
-Headers:
-```
-Authorization: Bearer <token>
-```
-
-Query Parameters:
-```
-limit: number (optional, default: 20) - Maximum number of cards to return
-```
-
-#### Response
-
-```json
-{
-  "status": "success",
-  "data": {
-    "cards": [
-      {
-        "id": "123e4567-e89b-12d3-a456-426614174000",
-        "userId": "123e4567-e89b-12d3-a456-426614174001",
-        "deckId": "123e4567-e89b-12d3-a456-426614174002",
-        "front": "What is a closure in JavaScript?",
-        "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
-        "state": 0,
-        "due": null,
-        "stability": 0,
-        "difficulty": 0,
-        "elapsed_days": 0,
-        "scheduled_days": 0,
-        "reps": 0,
-        "lapses": 0,
-        "last_review": null,
-        "createdAt": "2023-01-01T00:00:00.000Z",
-        "updatedAt": "2023-01-01T00:00:00.000Z",
-        "deckName": "JavaScript Fundamentals"
-      },
-      // More cards...
-    ]
-  }
-}
-```
-
 ### Submit Card Review
 
 ```
@@ -399,8 +334,8 @@ Content-Type: application/json
 Body:
 ```json
 {
-  "rating": 1,  // Rating from 1-4: 1=Again, 2=Hard, 3=Good, 4=Easy
-  "reviewedAt": "2023-01-01T00:00:00.000Z"  // Optional, defaults to current time
+  "rating": 3, // Rating from 1-4: 1=Again, 2=Hard, 3=Good, 4=Easy
+  "reviewedAt": "2023-01-01T00:00:00.000Z" // Optional, defaults to current time
 }
 ```
 
@@ -425,57 +360,6 @@ Body:
       "reps": 1,
       "lapses": 0,
       "lastReview": "2023-01-01T00:00:00.000Z",
-      "createdAt": "2023-01-01T00:00:00.000Z",
-      "updatedAt": "2023-01-01T00:00:00.000Z",
-      "deckName": "JavaScript Fundamentals"
-    }
-  }
-}
-```
-
-### Submit a Review for a Card
-
-```
-POST /api/cards/:id/review
-```
-
-#### Request
-
-Headers:
-```
-Authorization: Bearer <token>
-Content-Type: application/json
-```
-
-Body:
-```json
-{
-  "rating": 3, // 1=Again, 2=Hard, 3=Good, 4=Easy
-  "reviewedAt": "2023-01-01T00:00:00.000Z" // Optional, defaults to current time
-}
-```
-
-#### Response
-
-```json
-{
-  "status": "success",
-  "data": {
-    "card": {
-      "id": "123e4567-e89b-12d3-a456-426614174000",
-      "userId": "123e4567-e89b-12d3-a456-426614174001",
-      "deckId": "123e4567-e89b-12d3-a456-426614174002",
-      "front": "What is a closure in JavaScript?",
-      "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
-      "state": 1,
-      "due": "2023-01-02T00:00:00.000Z",
-      "stability": 1.5,
-      "difficulty": 0.3,
-      "elapsed_days": 0,
-      "scheduled_days": 1,
-      "reps": 1,
-      "lapses": 0,
-      "last_review": "2023-01-01T00:00:00.000Z",
       "createdAt": "2023-01-01T00:00:00.000Z",
       "updatedAt": "2023-01-01T00:00:00.000Z",
       "deckName": "JavaScript Fundamentals"
@@ -603,4 +487,4 @@ Authorization: Bearer <token>
 - The FSRS algorithm is used to implement an optimized spaced repetition system
 - The due field determines when a card should be reviewed next (null for new cards)
 - Row Level Security (RLS) ensures users can only access their own cards
-- The deckName field is included in all card responses for convenience 
+- The deckName field is included in all card responses for convenience

@@ -171,10 +171,26 @@ export const deckController = {
       });
     }
 
+    if (result.allCaughtUp) {
+      return res.status(200).json({
+        status: 'success',
+        data: {
+          deck: result.deck,
+          allCaughtUp: true,
+          message: "You're all caught up! No cards due for review at this time.",
+          totalCards: result.totalCards
+        },
+      });
+    }
+
     if (!result.card) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'No cards found in this deck',
+      return res.status(200).json({
+        status: 'success',
+        data: {
+          deck: result.deck,
+          emptyDeck: true,
+          message: "This deck doesn't have any cards yet. Add some cards to start reviewing!",
+        },
       });
     }
 
