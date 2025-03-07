@@ -3,6 +3,7 @@ import { Deck, DeckDB, CreateDeckDTO, UpdateDeckDTO } from '../models/deck.model
 import { Card } from '../models/card.model';
 import { snakeToCamelObject, camelToSnakeObject } from '../utils';
 import { fsrsService, ReviewMetrics } from './fsrs.service';
+import { cardReviewService } from './card-review.service';
 
 // Define a type for the review result
 interface ReviewResult {
@@ -30,7 +31,19 @@ export const deckService = {
     }
 
     // Convert snake_case DB results to camelCase for API
-    return (data || []).map(deck => snakeToCamelObject(deck) as Deck);
+    const decks = (data || []).map(deck => snakeToCamelObject(deck) as Deck);
+    
+    // Add review count to each deck
+    for (const deck of decks) {
+      try {
+        deck.reviewCount = await cardReviewService.countReviewReadyCards(deck.id, userId);
+      } catch (error) {
+        console.error(`Error counting review-ready cards for deck ${deck.id}:`, error);
+        deck.reviewCount = 0;
+      }
+    }
+    
+    return decks;
   },
 
   /**

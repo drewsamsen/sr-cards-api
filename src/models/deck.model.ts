@@ -18,6 +18,7 @@ export interface Deck {
   description: string | null;
   createdAt: string;
   updatedAt: string;
+  reviewCount?: number; // Number of cards ready for review
 }
 
 // Request DTOs (uses JavaScript camelCase convention)
