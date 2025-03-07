@@ -12,10 +12,10 @@ const router = Router();
 router.get('/', authenticate, userSettingsController.getUserSettings);
 
 /**
- * @route   PUT /api/user-settings
+ * @route   PATCH /api/user-settings
  * @desc    Update user settings
  * @access  Private
  */
-router.put('/', authenticate, userSettingsController.updateUserSettings);
+router.patch('/', authenticate, userSettingsController.updateUserSettings);
 
 export default router; 

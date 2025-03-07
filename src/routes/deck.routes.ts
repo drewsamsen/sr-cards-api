@@ -14,7 +14,7 @@ router.get('/slug/:slug', deckController.getDeckBySlug);
 router.get('/slug/:slug/review', deckController.getDeckReview);
 router.get('/:id', deckController.getDeckById);
 router.post('/', deckController.createDeck);
-router.put('/:id', deckController.updateDeck);
+router.patch('/:id', deckController.updateDeck);
 router.delete('/:id', deckController.deleteDeck);
 
 // Card routes for a specific deck

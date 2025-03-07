@@ -62,6 +62,34 @@ The API uses standard HTTP status codes:
 - `404 Not Found`: Resource not found
 - `500 Internal Server Error`: Server-side error
 
+## HTTP Methods
+
+The API uses standard HTTP methods:
+
+- `GET`: Retrieve resources
+- `POST`: Create new resources
+- `PATCH`: Update resources partially
+- `DELETE`: Remove resources
+
+### Why PATCH for Updates?
+
+This API uses PATCH (rather than PUT) for update operations because:
+
+1. Most updates are partial - users typically only need to modify specific fields
+2. PATCH is more efficient as it only requires sending the fields that need to be changed
+3. It follows RESTful best practices for partial updates
+
+For example, when updating a card, you only need to send the fields you want to change:
+
+```json
+PATCH /api/cards/:id
+{
+  "front": "Updated front content"
+}
+```
+
+This will only update the front content while leaving all other fields unchanged.
+
 ## Rate Limiting
 
 Currently, the API does not implement rate limiting.
@@ -86,7 +114,7 @@ The API does not currently implement versioning. Future versions may be accessed
 ### User Settings
 
 - `GET /api/user-settings`: Get the current user's settings
-- `PUT /api/user-settings`: Update the current user's settings
+- `PATCH /api/user-settings`: Update the current user's settings
 
 ### Decks
 
@@ -95,7 +123,7 @@ The API does not currently implement versioning. Future versions may be accessed
 - `GET /api/decks/slug/:slug`: Get a specific deck by slug
 - `GET /api/decks/slug/:slug/review`: Get a random card that is either new or due for review from a deck
 - `POST /api/decks`: Create a new deck
-- `PUT /api/decks/:id`: Update a deck
+- `PATCH /api/decks/:id`: Update a deck
 - `DELETE /api/decks/:id`: Delete a deck
 
 ### Cards
@@ -104,7 +132,7 @@ The API does not currently implement versioning. Future versions may be accessed
 - `GET /api/decks/:deckId/cards`: Get all cards for a specific deck
 - `GET /api/cards/:id`: Get a specific card by ID
 - `POST /api/decks/:deckId/cards`: Create a new card in a deck
-- `PUT /api/cards/:id`: Update a card
+- `PATCH /api/cards/:id`: Update a card
 - `DELETE /api/cards/:id`: Delete a card
 - `GET /api/cards/review`: Get cards due for review
 - `POST /api/cards/:id/review`: Submit a review for a card

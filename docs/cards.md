@@ -244,7 +244,7 @@ Body:
 ### Update a Card
 
 ```
-PUT /api/cards/:id
+PATCH /api/cards/:id
 ```
 
 #### Request

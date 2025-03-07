@@ -98,7 +98,7 @@ The following indexes are created for better performance:
 - `GET /api/decks/slug/:slug`: Get a specific deck by slug
 - `GET /api/decks/slug/:slug/review`: Get a random card from a deck for review with additional metrics
 - `POST /api/decks`: Create a new deck
-- `PUT /api/decks/:id`: Update a deck
+- `PATCH /api/decks/:id`: Update a deck
 - `DELETE /api/decks/:id`: Delete a deck
 
 ## Request and Response Examples
@@ -338,7 +338,7 @@ Authorization: Bearer <jwt-token>
 
 **Request:**
 ```http
-PUT /api/decks/uuid-1
+PATCH /api/decks/uuid-1
 Content-Type: application/json
 Authorization: Bearer <jwt-token>
 

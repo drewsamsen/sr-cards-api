@@ -168,7 +168,7 @@ Authorization: Bearer <token>
 ### Update User Settings
 
 ```
-PUT /api/user-settings
+PATCH /api/user-settings
 ```
 
 Updates the current user's settings. If the user doesn't have settings yet, default settings will be created first and then updated.
