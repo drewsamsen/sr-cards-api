@@ -17,6 +17,7 @@ export interface CardDB {
   created_at: string;
   updated_at: string;
   deck_name?: string; // Optional field from join with decks table
+  deck_slug?: string; // Optional field from join with decks table
 }
 
 // API model (uses JavaScript camelCase convention)
@@ -38,6 +39,7 @@ export interface Card {
   createdAt: string;
   updatedAt: string;
   deckName?: string; // Optional field from join with decks table
+  deckSlug?: string; // Optional field from join with decks table
 }
 
 // Request DTOs (uses JavaScript camelCase convention)

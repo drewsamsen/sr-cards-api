@@ -176,14 +176,15 @@ Authorization: Bearer <token>
       "due": null,
       "stability": 0,
       "difficulty": 0,
-      "elapsed_days": 0,
-      "scheduled_days": 0,
+      "elapsedDays": 0,
+      "scheduledDays": 0,
       "reps": 0,
       "lapses": 0,
-      "last_review": null,
+      "lastReview": null,
       "createdAt": "2023-01-01T00:00:00.000Z",
       "updatedAt": "2023-01-01T00:00:00.000Z",
-      "deckName": "JavaScript Fundamentals"
+      "deckName": "JavaScript Fundamentals",
+      "deckSlug": "javascript-fundamentals"
     }
   }
 }

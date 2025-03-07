@@ -14,7 +14,8 @@ export const cardService = {
       .select(`
         *,
         decks:deck_id (
-          name
+          name,
+          slug
         )
       `)
       .eq('user_id', userId)
@@ -26,13 +27,14 @@ export const cardService = {
 
     // Convert snake_case DB results to camelCase for API and add deck name
     return (data || []).map(card => {
-      const cardWithDeckName = {
+      const cardWithDeckInfo = {
         ...card,
-        deck_name: card.decks?.name
+        deck_name: card.decks?.name,
+        deck_slug: card.decks?.slug
       };
       // Remove the nested decks object before converting
-      delete cardWithDeckName.decks;
-      return snakeToCamelObject(cardWithDeckName) as Card;
+      delete cardWithDeckInfo.decks;
+      return snakeToCamelObject(cardWithDeckInfo) as Card;
     });
   },
 
@@ -45,7 +47,8 @@ export const cardService = {
       .select(`
         *,
         decks:deck_id (
-          name
+          name,
+          slug
         )
       `)
       .eq('deck_id', deckId)
@@ -58,13 +61,14 @@ export const cardService = {
 
     // Convert snake_case DB results to camelCase for API and add deck name
     return (data || []).map(card => {
-      const cardWithDeckName = {
+      const cardWithDeckInfo = {
         ...card,
-        deck_name: card.decks?.name
+        deck_name: card.decks?.name,
+        deck_slug: card.decks?.slug
       };
       // Remove the nested decks object before converting
-      delete cardWithDeckName.decks;
-      return snakeToCamelObject(cardWithDeckName) as Card;
+      delete cardWithDeckInfo.decks;
+      return snakeToCamelObject(cardWithDeckInfo) as Card;
     });
   },
 
@@ -77,7 +81,8 @@ export const cardService = {
       .select(`
         *,
         decks:deck_id (
-          name
+          name,
+          slug
         )
       `)
       .eq('id', cardId)
@@ -94,16 +99,17 @@ export const cardService = {
 
     if (!data) return null;
 
-    // Add deck name to the card object
-    const cardWithDeckName = {
+    // Add deck name and slug to the card object
+    const cardWithDeckInfo = {
       ...data,
-      deck_name: data.decks?.name
+      deck_name: data.decks?.name,
+      deck_slug: data.decks?.slug
     };
     // Remove the nested decks object before converting
-    delete cardWithDeckName.decks;
+    delete cardWithDeckInfo.decks;
     
     // Convert snake_case DB result to camelCase for API
-    return snakeToCamelObject(cardWithDeckName) as Card;
+    return snakeToCamelObject(cardWithDeckInfo) as Card;
   },
 
   /**
@@ -198,7 +204,8 @@ export const cardService = {
       .select(`
         *,
         decks:deck_id (
-          name
+          name,
+          slug
         )
       `)
       .eq('user_id', userId)
@@ -211,13 +218,14 @@ export const cardService = {
 
     // Convert snake_case DB results to camelCase for API and add deck name
     return (data || []).map(card => {
-      const cardWithDeckName = {
+      const cardWithDeckInfo = {
         ...card,
-        deck_name: card.decks?.name
+        deck_name: card.decks?.name,
+        deck_slug: card.decks?.slug
       };
       // Remove the nested decks object before converting
-      delete cardWithDeckName.decks;
-      return snakeToCamelObject(cardWithDeckName) as Card;
+      delete cardWithDeckInfo.decks;
+      return snakeToCamelObject(cardWithDeckInfo) as Card;
     });
   },
 
@@ -227,6 +235,7 @@ export const cardService = {
   async submitCardReview(cardId: string, reviewData: CardReviewDTO, userId: string): Promise<Card | null> {
     // First check if the card exists and belongs to the user
     const card = await this.getCardById(cardId, userId);
+    
     if (!card) {
       return null;
     }
@@ -261,7 +270,8 @@ export const cardService = {
       .select(`
         *,
         decks:deck_id (
-          name
+          name,
+          slug
         )
       `)
       .single();
@@ -290,16 +300,17 @@ export const cardService = {
       console.error('Failed to create review log:', logError);
     }
 
-    // Add deck name and convert to camelCase
-    const cardWithDeckName = {
+    // Add deck name and slug and convert to camelCase
+    const cardWithDeckInfo = {
       ...data,
-      deck_name: data.decks?.name
+      deck_name: data.decks?.name,
+      deck_slug: data.decks?.slug
     };
     
     // Remove the nested decks object before converting
-    delete cardWithDeckName.decks;
+    delete cardWithDeckInfo.decks;
     
     // Convert snake_case DB result to camelCase for API
-    return snakeToCamelObject(cardWithDeckName) as Card;
+    return snakeToCamelObject(cardWithDeckInfo) as Card;
   }
 }; 
