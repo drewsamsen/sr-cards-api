@@ -1,6 +1,6 @@
 # Card API
 
-A RESTful API built with TypeScript, Node.js, Express.js, PostgreSQL, and Supabase authentication.
+A RESTful API built with TypeScript, Node.js, Express.js, PostgreSQL, and Supabase authentication for a flashcard review application with spaced repetition.
 
 ## Features
 
@@ -12,6 +12,10 @@ A RESTful API built with TypeScript, Node.js, Express.js, PostgreSQL, and Supaba
 - Error handling middleware
 - Clean project structure
 - Local Supabase development environment
+- Free Spaced Repetition System (FSRS) algorithm for optimal learning
+- Daily review limits for balanced study sessions
+- Detailed review metrics and progress tracking
+- User-specific settings and preferences
 
 ## Documentation
 
@@ -23,6 +27,7 @@ Detailed documentation is available in the [docs](./docs) directory:
 - [Decks](./docs/decks.md)
 - [Cards](./docs/cards.md)
 - [Logs](./docs/logs.md)
+- [User Settings](./docs/user-settings.md)
 
 ## Project Structure
 
@@ -107,6 +112,7 @@ card-api/
 - `npm run build`: Build the project for production
 - `npm start`: Start the production server
 - `npm run lint`: Run the linter
+- `npm test`: Run the test suite
 - `npm run supabase:start`: Start the local Supabase instance
 - `npm run supabase:stop`: Stop the local Supabase instance
 - `npm run supabase:status`: Check the status of the local Supabase instance
@@ -114,11 +120,64 @@ card-api/
 
 ## API Endpoints
 
-- `GET /api/health`: Health check endpoint
+### Authentication
 - `POST /api/auth/register`: Register a new user
 - `POST /api/auth/login`: Login a user
 - `POST /api/auth/logout`: Logout a user
 - `GET /api/auth/me`: Get the current user (requires authentication)
+
+### Decks
+- `GET /api/decks`: Get all decks for the current user
+- `GET /api/decks/:id`: Get a specific deck by ID
+- `GET /api/decks/slug/:slug`: Get a specific deck by slug
+- `GET /api/decks/slug/:slug/review`: Get a random card from a deck for review
+- `POST /api/decks`: Create a new deck
+- `PATCH /api/decks/:id`: Update a deck
+- `DELETE /api/decks/:id`: Delete a deck
+
+### Cards
+- `GET /api/cards`: Get all cards for the current user
+- `GET /api/cards/:id`: Get a specific card by ID
+- `GET /api/cards/review`: Get cards due for review
+- `POST /api/cards`: Create a new card
+- `POST /api/cards/:id/review`: Submit a review for a card
+- `PATCH /api/cards/:id`: Update a card
+- `DELETE /api/cards/:id`: Delete a card
+
+### User Settings
+- `GET /api/settings`: Get user settings
+- `PATCH /api/settings`: Update user settings
+
+## Key Features
+
+### Spaced Repetition System
+
+The API implements the Free Spaced Repetition System (FSRS) algorithm, which optimizes the timing of card reviews based on user performance. This scientifically-backed approach helps users learn more efficiently by showing cards at the optimal time for memory retention.
+
+### Daily Review Limits
+
+To prevent burnout and encourage consistent study habits, the API enforces daily limits on:
+- New cards per day
+- Review cards per day
+
+These limits are customizable through user settings and are applied on a per-deck basis using a rolling 24-hour window.
+
+### Remaining Reviews Tracking
+
+The API tracks and provides information about:
+- How many cards are ready for review in each deck
+- How many more reviews a user can complete today based on:
+  - Their daily limit settings
+  - The actual availability of cards in each deck
+  - Their review history in the last 24 hours
+
+### User Settings
+
+Users can customize their learning experience through settings:
+- Theme preferences
+- Daily card limits
+- FSRS algorithm parameters
+- Notification preferences
 
 ## License
 
