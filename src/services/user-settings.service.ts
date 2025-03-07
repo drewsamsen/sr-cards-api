@@ -14,6 +14,10 @@ export interface UserSettings {
       reminderTime: string;
       reminderDays: string[];
     };
+    learning: {
+      newCardsPerDay: number;
+      maxReviewsPerDay: number;
+    };
     fsrsParams: {
       requestRetention: number;
       maximumInterval: number;

@@ -6,6 +6,10 @@
     "reminderTime": "18:00",
     "reminderDays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
   },
+  "learning": {
+    "newCardsPerDay": 5,
+    "maxReviewsPerDay": 10
+  },
   "fsrsParams": {
     "requestRetention": 0.9,
     "maximumInterval": 365,

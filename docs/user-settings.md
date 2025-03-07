@@ -40,6 +40,10 @@ The settings object has the following structure:
     reminderTime: string;     // Time for daily reminders (format: "HH:MM")
     reminderDays: string[];   // Days of the week for reminders
   };
+  learning: {
+    newCardsPerDay: number;   // Maximum number of new cards to show per day
+    maxReviewsPerDay: number; // Maximum number of reviews per day
+  };
   fsrsParams: {
     requestRetention: number; // Target retention rate (0.0 to 1.0)
     maximumInterval: number;  // Maximum interval in days
@@ -62,6 +66,10 @@ When a user is created or when settings are requested for the first time, defaul
     "enabled": true,
     "reminderTime": "18:00",
     "reminderDays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+  },
+  "learning": {
+    "newCardsPerDay": 5,
+    "maxReviewsPerDay": 10
   },
   "fsrsParams": {
     "requestRetention": 0.9,
@@ -120,6 +128,10 @@ Authorization: Bearer <token>
           "reminderTime": "18:00",
           "reminderDays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         },
+        "learning": {
+          "newCardsPerDay": 5,
+          "maxReviewsPerDay": 10
+        },
         "fsrsParams": {
           "requestRetention": 0.9,
           "maximumInterval": 365,
@@ -176,6 +188,9 @@ Body:
     "theme": "dark",
     "notifications": {
       "enabled": false
+    },
+    "learning": {
+      "newCardsPerDay": 10
     }
   }
 }
@@ -199,6 +214,10 @@ Note: You can include any subset of the settings object for partial updates.
           "enabled": false,
           "reminderTime": "18:00",
           "reminderDays": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        },
+        "learning": {
+          "newCardsPerDay": 10,
+          "maxReviewsPerDay": 10
         },
         "fsrsParams": {
           "requestRetention": 0.9,
