@@ -55,13 +55,13 @@ This API implements the Free Spaced Repetition Scheduler (FSRS) algorithm for op
 
 All card endpoints require authentication.
 
-### Get All Cards for Current User
+### Get Cards
 
 ```
 GET /api/cards
 ```
 
-This endpoint returns all cards belonging to the current user across all decks, with pagination support.
+This endpoint returns cards belonging to the current user, with optional filtering by deck and pagination support.
 
 #### Request
 
@@ -72,13 +72,16 @@ Authorization: Bearer <token>
 
 Query Parameters:
 ```
+deckId: Optional deck ID to filter cards by deck
 limit: Maximum number of cards to return (default: 20, max: 100)
 offset: Number of cards to skip (default: 0)
 ```
 
-Example:
+Examples:
 ```
-GET /api/cards?limit=10&offset=20
+GET /api/cards                                                 # Get all cards
+GET /api/cards?limit=10&offset=20                              # Get all cards with pagination
+GET /api/cards?deckId=123e4567-e89b-12d3-a456-426614174002    # Get cards for a specific deck
 ```
 
 #### Response
@@ -114,71 +117,8 @@ GET /api/cards?limit=10&offset=20
       "limit": 10,
       "offset": 20,
       "hasMore": true
-    }
-  }
-}
-```
-
-### Get All Cards for a Deck
-
-```
-GET /api/decks/:deckId/cards
-```
-
-This endpoint returns all cards belonging to a specific deck, with pagination support.
-
-#### Request
-
-Headers:
-```
-Authorization: Bearer <token>
-```
-
-Query Parameters:
-```
-limit: Maximum number of cards to return (default: 20, max: 100)
-offset: Number of cards to skip (default: 0)
-```
-
-Example:
-```
-GET /api/decks/123e4567-e89b-12d3-a456-426614174002/cards?limit=10&offset=20
-```
-
-#### Response
-
-```json
-{
-  "status": "success",
-  "data": {
-    "cards": [
-      {
-        "id": "123e4567-e89b-12d3-a456-426614174000",
-        "userId": "123e4567-e89b-12d3-a456-426614174001",
-        "deckId": "123e4567-e89b-12d3-a456-426614174002",
-        "front": "What is a closure in JavaScript?",
-        "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
-        "state": 0,
-        "due": null,
-        "stability": 0,
-        "difficulty": 0,
-        "elapsedDays": 0,
-        "scheduledDays": 0,
-        "reps": 0,
-        "lapses": 0,
-        "lastReview": null,
-        "createdAt": "2023-01-01T00:00:00.000Z",
-        "updatedAt": "2023-01-01T00:00:00.000Z",
-        "deckName": "JavaScript Fundamentals"
-      },
-      // More cards...
-    ],
-    "pagination": {
-      "total": 45,
-      "limit": 10,
-      "offset": 20,
-      "hasMore": true
-    }
+    },
+    "deckId": "123e4567-e89b-12d3-a456-426614174002" // Only present when filtering by deck
   }
 }
 ```

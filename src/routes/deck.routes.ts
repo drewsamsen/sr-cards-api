@@ -18,7 +18,6 @@ router.patch('/:id', deckController.updateDeck);
 router.delete('/:id', deckController.deleteDeck);
 
 // Card routes for a specific deck
-router.get('/:deckId/cards', cardController.getCardsByDeckId);
 router.post('/:deckId/cards', cardController.createCard);
 
 export default router; 

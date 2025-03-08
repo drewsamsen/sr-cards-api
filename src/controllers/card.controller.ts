@@ -7,11 +7,11 @@ import { logService } from '../services/log.service';
 
 export const cardController = {
   /**
-   * Get all cards for the current user across all decks
+   * Helper method to parse and validate pagination parameters
+   * @param req The request object
+   * @returns Validated pagination parameters
    */
-  getAllCards: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user.id;
-    
+  _getPaginationParams(req: AuthenticatedRequest): { limit: number; offset: number } {
     // Parse pagination parameters from query string
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
     const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
@@ -20,10 +20,31 @@ export const cardController = {
     const validatedLimit = Math.min(Math.max(1, limit), 100); // Between 1 and 100
     const validatedOffset = Math.max(0, offset); // At least 0
     
-    const { cards, total } = await cardService.getAllCardsByUserId(
+    return {
+      limit: validatedLimit,
+      offset: validatedOffset
+    };
+  },
+
+  /**
+   * Get cards with optional filtering
+   */
+  getCards: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user.id;
+    
+    // Get pagination parameters
+    const { limit, offset } = cardController._getPaginationParams(req);
+    
+    // Get optional deck ID filter
+    const deckId = req.query.deckId as string;
+    
+    const { cards, total } = await cardService.getCards(
       userId, 
-      validatedLimit, 
-      validatedOffset
+      {
+        limit,
+        offset,
+        deckId: deckId || undefined
+      }
     );
 
     res.status(200).json({
@@ -32,9 +53,39 @@ export const cardController = {
         cards,
         pagination: {
           total,
-          limit: validatedLimit,
-          offset: validatedOffset,
-          hasMore: validatedOffset + cards.length < total
+          limit,
+          offset,
+          hasMore: offset + cards.length < total
+        },
+        deckId: deckId || undefined
+      },
+    });
+  }),
+
+  /**
+   * Get all cards for the current user across all decks
+   */
+  getAllCards: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user.id;
+    
+    // Get pagination parameters
+    const { limit, offset } = cardController._getPaginationParams(req);
+    
+    const { cards, total } = await cardService.getAllCardsByUserId(
+      userId, 
+      limit, 
+      offset
+    );
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        cards,
+        pagination: {
+          total,
+          limit,
+          offset,
+          hasMore: offset + cards.length < total
         }
       },
     });
@@ -47,19 +98,14 @@ export const cardController = {
     const userId = req.user.id;
     const deckId = req.params.deckId;
     
-    // Parse pagination parameters from query string
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
-    const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
-    
-    // Validate pagination parameters
-    const validatedLimit = Math.min(Math.max(1, limit), 100); // Between 1 and 100
-    const validatedOffset = Math.max(0, offset); // At least 0
+    // Get pagination parameters
+    const { limit, offset } = cardController._getPaginationParams(req);
     
     const { cards, total } = await cardService.getCardsByDeckId(
       deckId, 
       userId, 
-      validatedLimit, 
-      validatedOffset
+      limit, 
+      offset
     );
 
     res.status(200).json({
@@ -68,9 +114,9 @@ export const cardController = {
         cards,
         pagination: {
           total,
-          limit: validatedLimit,
-          offset: validatedOffset,
-          hasMore: validatedOffset + cards.length < total
+          limit,
+          offset,
+          hasMore: offset + cards.length < total
         }
       },
     });
@@ -321,9 +367,8 @@ export const cardController = {
     const userId = req.user.id;
     const query = req.query.q as string;
     
-    // Parse pagination parameters from query string
-    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
-    const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
+    // Get pagination parameters
+    const { limit, offset } = cardController._getPaginationParams(req);
     
     // Get optional deck ID filter
     const deckId = req.query.deckId as string;
@@ -336,17 +381,13 @@ export const cardController = {
       });
     }
     
-    // Validate pagination parameters
-    const validatedLimit = Math.min(Math.max(1, limit), 100); // Between 1 and 100
-    const validatedOffset = Math.max(0, offset); // At least 0
-    
     // Search for cards
     const { cards, total } = await cardService.searchCards(
       userId, 
       query, 
       {
-        limit: validatedLimit,
-        offset: validatedOffset,
+        limit,
+        offset,
         deckId: deckId || undefined
       }
     );
@@ -357,9 +398,9 @@ export const cardController = {
         cards,
         pagination: {
           total,
-          limit: validatedLimit,
-          offset: validatedOffset,
-          hasMore: validatedOffset + cards.length < total
+          limit,
+          offset,
+          hasMore: offset + cards.length < total
         },
         query,
         deckId: deckId || undefined

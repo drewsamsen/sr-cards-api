@@ -7,8 +7,8 @@ const router = Router();
 // Apply auth middleware to all card routes
 router.use(authenticate);
 
-// Get all cards
-router.get('/', cardController.getAllCards);
+// Get cards (with optional deck filter)
+router.get('/', cardController.getCards);
 
 // Search cards
 router.get('/search', cardController.searchCards);
