@@ -8,9 +8,28 @@ import { DailyProgressResponse } from '../models/daily-progress.model';
 
 export const cardService = {
   /**
-   * Get all cards for a user across all decks
+   * Get all cards for a user across all decks with pagination
+   * @param userId The user ID
+   * @param limit Maximum number of cards to return (default: 20)
+   * @param offset Number of cards to skip (default: 0)
+   * @returns Array of cards and total count
    */
-  async getAllCardsByUserId(userId: string): Promise<Card[]> {
+  async getAllCardsByUserId(
+    userId: string, 
+    limit: number = 20, 
+    offset: number = 0
+  ): Promise<{ cards: Card[], total: number }> {
+    // Get the total count first
+    const { count, error: countError } = await supabaseAdmin
+      .from('cards')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+      
+    if (countError) {
+      throw countError;
+    }
+    
+    // Then get the paginated data
     const { data, error } = await supabaseAdmin
       .from('cards')
       .select(`
@@ -21,14 +40,15 @@ export const cardService = {
         )
       `)
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
       throw error;
     }
 
     // Convert snake_case DB results to camelCase for API and add deck name
-    return (data || []).map(card => {
+    const cards = (data || []).map(card => {
       const cardWithDeckInfo = {
         ...card,
         deck_name: card.decks?.name,
@@ -38,12 +58,39 @@ export const cardService = {
       delete cardWithDeckInfo.decks;
       return snakeToCamelObject(cardWithDeckInfo) as Card;
     });
+    
+    return {
+      cards,
+      total: count || 0
+    };
   },
 
   /**
-   * Get all cards for a deck
+   * Get all cards for a deck with pagination
+   * @param deckId The deck ID
+   * @param userId The user ID
+   * @param limit Maximum number of cards to return (default: 20)
+   * @param offset Number of cards to skip (default: 0)
+   * @returns Array of cards and total count
    */
-  async getCardsByDeckId(deckId: string, userId: string): Promise<Card[]> {
+  async getCardsByDeckId(
+    deckId: string, 
+    userId: string, 
+    limit: number = 20, 
+    offset: number = 0
+  ): Promise<{ cards: Card[], total: number }> {
+    // Get the total count first
+    const { count, error: countError } = await supabaseAdmin
+      .from('cards')
+      .select('*', { count: 'exact', head: true })
+      .eq('deck_id', deckId)
+      .eq('user_id', userId);
+      
+    if (countError) {
+      throw countError;
+    }
+    
+    // Then get the paginated data
     const { data, error } = await supabaseAdmin
       .from('cards')
       .select(`
@@ -55,14 +102,15 @@ export const cardService = {
       `)
       .eq('deck_id', deckId)
       .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
 
     if (error) {
       throw error;
     }
 
     // Convert snake_case DB results to camelCase for API and add deck name
-    return (data || []).map(card => {
+    const cards = (data || []).map(card => {
       const cardWithDeckInfo = {
         ...card,
         deck_name: card.decks?.name,
@@ -72,6 +120,11 @@ export const cardService = {
       delete cardWithDeckInfo.decks;
       return snakeToCamelObject(cardWithDeckInfo) as Card;
     });
+    
+    return {
+      cards,
+      total: count || 0
+    };
   },
 
   /**

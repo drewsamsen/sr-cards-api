@@ -61,13 +61,24 @@ All card endpoints require authentication.
 GET /api/cards
 ```
 
-This endpoint returns all cards belonging to the current user across all decks.
+This endpoint returns all cards belonging to the current user across all decks, with pagination support.
 
 #### Request
 
 Headers:
 ```
 Authorization: Bearer <token>
+```
+
+Query Parameters:
+```
+limit: Maximum number of cards to return (default: 20, max: 100)
+offset: Number of cards to skip (default: 0)
+```
+
+Example:
+```
+GET /api/cards?limit=10&offset=20
 ```
 
 #### Response
@@ -87,17 +98,23 @@ Authorization: Bearer <token>
         "due": null,
         "stability": 0,
         "difficulty": 0,
-        "elapsed_days": 0,
-        "scheduled_days": 0,
+        "elapsedDays": 0,
+        "scheduledDays": 0,
         "reps": 0,
         "lapses": 0,
-        "last_review": null,
+        "lastReview": null,
         "createdAt": "2023-01-01T00:00:00.000Z",
         "updatedAt": "2023-01-01T00:00:00.000Z",
         "deckName": "JavaScript Fundamentals"
       },
       // More cards...
-    ]
+    ],
+    "pagination": {
+      "total": 45,
+      "limit": 10,
+      "offset": 20,
+      "hasMore": true
+    }
   }
 }
 ```
@@ -108,11 +125,24 @@ Authorization: Bearer <token>
 GET /api/decks/:deckId/cards
 ```
 
+This endpoint returns all cards belonging to a specific deck, with pagination support.
+
 #### Request
 
 Headers:
 ```
 Authorization: Bearer <token>
+```
+
+Query Parameters:
+```
+limit: Maximum number of cards to return (default: 20, max: 100)
+offset: Number of cards to skip (default: 0)
+```
+
+Example:
+```
+GET /api/decks/123e4567-e89b-12d3-a456-426614174002/cards?limit=10&offset=20
 ```
 
 #### Response
@@ -132,17 +162,23 @@ Authorization: Bearer <token>
         "due": null,
         "stability": 0,
         "difficulty": 0,
-        "elapsed_days": 0,
-        "scheduled_days": 0,
+        "elapsedDays": 0,
+        "scheduledDays": 0,
         "reps": 0,
         "lapses": 0,
-        "last_review": null,
+        "lastReview": null,
         "createdAt": "2023-01-01T00:00:00.000Z",
         "updatedAt": "2023-01-01T00:00:00.000Z",
         "deckName": "JavaScript Fundamentals"
       },
       // More cards...
-    ]
+    ],
+    "pagination": {
+      "total": 45,
+      "limit": 10,
+      "offset": 20,
+      "hasMore": true
+    }
   }
 }
 ```

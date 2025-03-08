@@ -11,13 +11,31 @@ export const cardController = {
    */
   getAllCards: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
-
-    const cards = await cardService.getAllCardsByUserId(userId);
+    
+    // Parse pagination parameters from query string
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+    const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
+    
+    // Validate pagination parameters
+    const validatedLimit = Math.min(Math.max(1, limit), 100); // Between 1 and 100
+    const validatedOffset = Math.max(0, offset); // At least 0
+    
+    const { cards, total } = await cardService.getAllCardsByUserId(
+      userId, 
+      validatedLimit, 
+      validatedOffset
+    );
 
     res.status(200).json({
       status: 'success',
       data: {
         cards,
+        pagination: {
+          total,
+          limit: validatedLimit,
+          offset: validatedOffset,
+          hasMore: validatedOffset + cards.length < total
+        }
       },
     });
   }),
@@ -28,13 +46,32 @@ export const cardController = {
   getCardsByDeckId: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
     const deckId = req.params.deckId;
-
-    const cards = await cardService.getCardsByDeckId(deckId, userId);
+    
+    // Parse pagination parameters from query string
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+    const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
+    
+    // Validate pagination parameters
+    const validatedLimit = Math.min(Math.max(1, limit), 100); // Between 1 and 100
+    const validatedOffset = Math.max(0, offset); // At least 0
+    
+    const { cards, total } = await cardService.getCardsByDeckId(
+      deckId, 
+      userId, 
+      validatedLimit, 
+      validatedOffset
+    );
 
     res.status(200).json({
       status: 'success',
       data: {
         cards,
+        pagination: {
+          total,
+          limit: validatedLimit,
+          offset: validatedOffset,
+          hasMore: validatedOffset + cards.length < total
+        }
       },
     });
   }),
