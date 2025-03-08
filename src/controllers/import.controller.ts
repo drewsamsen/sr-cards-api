@@ -45,14 +45,20 @@ export const importController = {
       // Create import preview
       const preview = await importService.createImportPreview(userId, deckId, csvData);
 
+      // Add a message about skipped header rows if any were detected
+      const responseData = { ...preview };
+      if (preview.import.summary.skippedHeaderRows?.length) {
+        responseData.import.message = `${preview.import.summary.skippedHeaderRows.length} row(s) that appeared to be header duplicates were skipped.`;
+      }
+
       // If debug mode is enabled, include the raw CSV data in the response
-      const responseData = debug 
-        ? { ...preview, debug: { rawCsvData: csvData.substring(0, 1000) + (csvData.length > 1000 ? '...' : '') } }
-        : preview;
+      const finalResponseData = debug 
+        ? { ...responseData, debug: { rawCsvData: csvData.substring(0, 1000) + (csvData.length > 1000 ? '...' : '') } }
+        : responseData;
 
       res.status(200).json({
         status: 'success',
-        data: responseData
+        data: finalResponseData
       });
     } catch (error: any) {
       console.error('Error creating import preview:', error);

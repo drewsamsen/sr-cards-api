@@ -51,21 +51,97 @@ export const csvService = {
         // Try to parse the CSV data
         const rawRecords = parse(csvData, parseOptions) as Record<string, string>[];
         
-        // Map column names to standard names
-        const records = this.mapColumnNames(rawRecords);
+        // Filter out rows that appear to be header duplicates
+        const { filteredRecords, skippedRows } = this.filterHeaderDuplicates(rawRecords);
         
-        return this.processRecords(records);
+        // Map column names to standard names
+        const records = this.mapColumnNames(filteredRecords);
+        
+        // Process records and include skipped rows in the summary
+        return this.processRecords(records, skippedRows);
       } catch (parseError: any) {
         console.log('Standard parsing failed, trying manual parsing:', parseError.message);
         
         // If standard parsing fails, try manual parsing
-        const records = this.manualParse(csvData, detectedDelimiter);
-        return this.processRecords(records);
+        const { records, skippedRows } = this.manualParse(csvData, detectedDelimiter);
+        return this.processRecords(records, skippedRows);
       }
     } catch (error: any) {
       // Re-throw with the error message
       throw new Error(error.message);
     }
+  },
+
+  /**
+   * Filter out rows that appear to be header duplicates
+   * @param records The raw parsed records
+   * @returns Filtered records without header duplicates and skipped row numbers
+   */
+  filterHeaderDuplicates(records: Record<string, string>[]): { 
+    filteredRecords: Record<string, string>[]; 
+    skippedRows: number[] 
+  } {
+    if (records.length <= 1) {
+      return { filteredRecords: records, skippedRows: [] };
+    }
+    
+    // Get the headers (keys of the first record)
+    const headers = Object.keys(records[0]);
+    
+    // Track skipped rows for logging
+    const skippedRows: number[] = [];
+    
+    // Filter out rows that match headers
+    const filteredRecords = records.filter((record, index) => {
+      // Check if this row appears to be a header duplicate
+      const headerMatchCount = this.countHeaderMatches(record, headers);
+      const totalFields = Object.keys(record).length;
+      const matchRatio = headerMatchCount / totalFields;
+      
+      // If more than 50% of the fields match headers (case-insensitive), consider it a header row
+      if (matchRatio >= 0.5 && headerMatchCount >= 2) {
+        skippedRows.push(index + 2); // +2 for 1-indexed and header row
+        return false;
+      }
+      
+      return true;
+    });
+    
+    // Log skipped rows if any
+    if (skippedRows.length > 0) {
+      console.log(`Skipped ${skippedRows.length} rows that appear to be header duplicates: rows ${skippedRows.join(', ')}`);
+    }
+    
+    return { filteredRecords, skippedRows };
+  },
+  
+  /**
+   * Count how many values in a record match the headers (case-insensitive)
+   * @param record The record to check
+   * @param headers The headers to compare against
+   * @returns The number of matches
+   */
+  countHeaderMatches(record: Record<string, string>, headers: string[]): number {
+    let matchCount = 0;
+    
+    // Check each value in the record
+    for (const [key, value] of Object.entries(record)) {
+      // Skip empty values
+      if (!value || value.trim() === '') {
+        continue;
+      }
+      
+      // Check if this value matches any header (case-insensitive)
+      const valueMatches = headers.some(header => 
+        header.toLowerCase() === value.toLowerCase()
+      );
+      
+      if (valueMatches) {
+        matchCount++;
+      }
+    }
+    
+    return matchCount;
   },
 
   /**
@@ -121,9 +197,10 @@ export const csvService = {
   /**
    * Process parsed records into the required format
    * @param records The parsed records
+   * @param skippedRows The skipped row numbers
    * @returns Object containing processed data, preview, and summary
    */
-  processRecords(records: ParsedCard[]): {
+  processRecords(records: ParsedCard[], skippedRows: number[]): {
     parsedData: any[];
     preview: CardPreview[];
     summary: ImportSummary;
@@ -186,7 +263,8 @@ export const csvService = {
       totalRows: records.length,
       validRows: validCards.length,
       invalidRows: records.length - validCards.length,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : undefined,
+      skippedHeaderRows: skippedRows.length > 0 ? skippedRows : undefined
     };
 
     return {
@@ -200,14 +278,17 @@ export const csvService = {
    * Manual parsing for problematic CSV/TSV data
    * @param csvData The CSV data as a string
    * @param delimiter The delimiter character
-   * @returns Array of parsed records
+   * @returns Array of parsed records and skipped row numbers
    */
-  manualParse(csvData: string, delimiter: string): ParsedCard[] {
+  manualParse(csvData: string, delimiter: string): { 
+    records: ParsedCard[]; 
+    skippedRows: number[] 
+  } {
     // Split into lines
     const lines = csvData.split(/\r?\n/).filter(line => line.trim());
     
     if (lines.length === 0) {
-      return [];
+      return { records: [], skippedRows: [] };
     }
     
     // Get headers from first line
@@ -238,11 +319,22 @@ export const csvService = {
     
     // Parse data rows
     const records: ParsedCard[] = [];
+    const skippedRows: number[] = [];
     
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i];
       // Simple split by delimiter (this is a fallback, so we're not handling quotes perfectly)
       const fields = line.split(delimiter);
+      
+      // Check if this row appears to be a header duplicate
+      const headerMatchCount = this.countHeaderMatchesForManualParse(fields, headers);
+      const matchRatio = headerMatchCount / fields.length;
+      
+      // If more than 50% of the fields match headers (case-insensitive), consider it a header row
+      if (matchRatio >= 0.5 && headerMatchCount >= 2) {
+        skippedRows.push(i + 1); // +1 for 1-indexed
+        continue; // Skip this row
+      }
       
       const record: ParsedCard = {
         front: fields[frontIndex]?.trim() || '',
@@ -265,7 +357,43 @@ export const csvService = {
       records.push(record);
     }
     
-    return records;
+    // Log skipped rows if any
+    if (skippedRows.length > 0) {
+      console.log(`Manual parser skipped ${skippedRows.length} rows that appear to be header duplicates: rows ${skippedRows.join(', ')}`);
+    }
+    
+    return { records, skippedRows };
+  },
+  
+  /**
+   * Count how many values in a row match the headers (case-insensitive) for manual parsing
+   * @param fields The fields in the row
+   * @param headers The headers to compare against
+   * @returns The number of matches
+   */
+  countHeaderMatchesForManualParse(fields: string[], headers: string[]): number {
+    let matchCount = 0;
+    
+    // Check each field in the row
+    for (let i = 0; i < fields.length; i++) {
+      const value = fields[i]?.trim();
+      
+      // Skip empty values
+      if (!value) {
+        continue;
+      }
+      
+      // Check if this value matches any header (case-insensitive)
+      const valueMatches = headers.some(header => 
+        header.toLowerCase() === value.toLowerCase()
+      );
+      
+      if (valueMatches) {
+        matchCount++;
+      }
+    }
+    
+    return matchCount;
   },
 
   /**

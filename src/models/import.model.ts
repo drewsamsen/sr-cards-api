@@ -31,6 +31,7 @@ export interface ImportSummary {
   totalRows: number;
   validRows: number;
   invalidRows: number;
+  skippedHeaderRows?: number[];
   errors?: ImportError[];
 }
 
@@ -59,6 +60,7 @@ export interface ImportPreviewResponse {
     status: string;
     summary: ImportSummary;
     expiresAt: string;
+    message?: string;
   };
   preview: CardPreview[];
 }

@@ -18,6 +18,19 @@ The system supports both comma-delimited (CSV) and tab-delimited (TSV) formats. 
 - First row should be a header row with column names
 - Text fields may contain commas or tabs (depending on the delimiter) if properly quoted
 
+### Intelligent Header Detection
+
+The system automatically detects and skips rows that appear to be duplicate headers. This is useful for imports from applications that include title-cased headers or metadata rows at the top of the file.
+
+For example, if your data looks like this:
+```
+question	answer	tags
+Question	Answer	Tags
+"What is JavaScript?"	"A programming language"	"javascript"
+```
+
+The system will recognize that the second row (`Question	Answer	Tags`) is likely a duplicate header and will skip it during import.
+
 ### Supported Column Names
 
 The system recognizes various alternative column names:
