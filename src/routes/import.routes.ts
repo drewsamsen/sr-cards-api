@@ -7,6 +7,9 @@ const router = Router();
 // All import routes require authentication
 router.use(authenticate);
 
+// Get import history
+router.get('/history', importController.getImportHistory);
+
 // Create import preview
 router.post('/preview', importController.createImportPreview);
 

@@ -212,5 +212,32 @@ export const importService = {
       console.error('Error cancelling import:', error);
       throw error;
     }
+  },
+
+  /**
+   * Get import history for a user
+   * @param userId The user ID
+   * @param limit Maximum number of imports to return (default: 10)
+   * @returns Array of import history items
+   */
+  async getImportHistory(userId: string, limit: number = 10): Promise<Import[]> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('imports')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (error) {
+        throw error;
+      }
+
+      // Convert to camelCase
+      return (data || []).map(item => snakeToCamelObject(item) as Import);
+    } catch (error: any) {
+      console.error('Error getting import history:', error);
+      throw error;
+    }
   }
 }; 

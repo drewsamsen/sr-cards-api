@@ -266,6 +266,65 @@ Authorization: Bearer <jwt-token>
 }
 ```
 
+### Get Import History
+
+This endpoint retrieves the user's recent import history.
+
+**Request:**
+```http
+GET /api/imports/history?limit=10
+Authorization: Bearer <jwt-token>
+```
+
+**Parameters:**
+- `limit` (optional): Maximum number of imports to return (default: 10, max: 50)
+
+**Response:**
+```json
+{
+  "status": "success",
+  "data": {
+    "imports": [
+      {
+        "id": "import-uuid-1",
+        "deckId": "deck-uuid-1",
+        "status": "completed",
+        "summary": {
+          "totalRows": 10,
+          "validRows": 10,
+          "invalidRows": 0,
+          "skippedHeaderRows": [2]
+        },
+        "createdAt": "2023-06-01T12:00:00Z",
+        "expiresAt": "2023-06-01T12:30:00Z"
+      },
+      {
+        "id": "import-uuid-2",
+        "deckId": "deck-uuid-2",
+        "status": "failed",
+        "summary": {
+          "totalRows": 5,
+          "validRows": 3,
+          "invalidRows": 2,
+          "errors": [
+            {
+              "row": 3,
+              "message": "Front side cannot be empty"
+            },
+            {
+              "row": 5,
+              "message": "Back side cannot be empty"
+            }
+          ]
+        },
+        "createdAt": "2023-05-30T15:45:00Z",
+        "expiresAt": "2023-05-30T16:15:00Z"
+      }
+    ]
+  }
+}
+```
+
 ## Implementation Notes
 
 - Import previews expire after 30 minutes

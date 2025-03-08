@@ -154,6 +154,7 @@ card-api/
 - `POST /api/imports/preview`: Create an import preview from CSV data
 - `POST /api/imports/confirm`: Confirm and process an import
 - `POST /api/imports/cancel`: Cancel a pending import
+- `GET /api/imports/history`: Get recent import history
 
 ## Key Features
 

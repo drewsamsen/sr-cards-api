@@ -153,5 +153,61 @@ export const importController = {
         message: error.message
       });
     }
+  },
+
+  /**
+   * Get import history for the current user
+   * @param req Request
+   * @param res Response
+   */
+  async getImportHistory(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        res.status(401).json({
+          status: 'error',
+          message: 'Unauthorized'
+        });
+        return;
+      }
+
+      // Get limit from query params (default to 10)
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+      
+      // Validate limit
+      if (isNaN(limit) || limit < 1 || limit > 50) {
+        res.status(400).json({
+          status: 'error',
+          message: 'Limit must be a number between 1 and 50'
+        });
+        return;
+      }
+
+      // Get import history
+      const imports = await importService.getImportHistory(userId, limit);
+
+      // Transform the response to include only relevant information
+      const importHistory = imports.map(importItem => ({
+        id: importItem.id,
+        deckId: importItem.deckId,
+        status: importItem.status,
+        summary: importItem.summary,
+        createdAt: importItem.createdAt,
+        expiresAt: importItem.expiresAt
+      }));
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          imports: importHistory
+        }
+      });
+    } catch (error: any) {
+      console.error('Error getting import history:', error);
+      res.status(500).json({
+        status: 'error',
+        message: error.message
+      });
+    }
   }
 }; 
