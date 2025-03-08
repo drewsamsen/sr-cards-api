@@ -196,6 +196,92 @@ export const csvService = {
   },
 
   /**
+   * Process text content by formatting spaces and cleaning up quotes
+   * @param text The text to process
+   * @returns Processed text with proper formatting
+   */
+  processTextContent(text: string): string {
+    if (!text) {
+      return text;
+    }
+    
+    // Apply all text processing steps in sequence
+    let result = this.convertTripleSpacesToLineBreaks(text);
+    result = this.handleDictionaryPattern(result);
+    result = this.cleanupQuotes(result);
+    
+    return result;
+  },
+
+  /**
+   * Convert triple spaces to line breaks in text
+   * @param text The text to process
+   * @returns Text with triple spaces converted to line breaks
+   */
+  convertTripleSpacesToLineBreaks(text: string): string {
+    if (!text) {
+      return text;
+    }
+    
+    // Replace three or more consecutive spaces with a line break
+    return text.replace(/\s{3,}/g, '\n');
+  },
+
+  /**
+   * Handle dictionary definition pattern in text
+   * @param text The text to process
+   * @returns Text with dictionary pattern properly formatted
+   */
+  handleDictionaryPattern(text: string): string {
+    if (!text) {
+      return text;
+    }
+    
+    // Handle dictionary definition pattern:
+    // word "definition. ""example"""
+    const dictionaryPattern = /^(\w+)\s+"([^"]+)\s+""([^"]+)"""\s*$/;
+    if (dictionaryPattern.test(text)) {
+      return text.replace(dictionaryPattern, '$1 $2 "$3"');
+    }
+    
+    return text;
+  },
+
+  /**
+   * Clean up quotes in text
+   * @param text The text to process
+   * @returns Text with quotes properly cleaned up
+   */
+  cleanupQuotes(text: string): string {
+    if (!text) {
+      return text;
+    }
+    
+    let result = text;
+    
+    // 1. Handle patterns like hello """world""" -> hello "world"
+    if (result.includes('"""')) {
+      result = result.replace(/([^"])"""([^"]+)"""([^"]|$)/g, '$1"$2"$3');
+    }
+    
+    // 2. Handle patterns like hello """"world"""" -> hello "world"
+    if (result.includes('""""')) {
+      result = result.replace(/([^"])""""([^"]+)""""([^"]|$)/g, '$1"$2"$3');
+    }
+    
+    // 3. Remove leading and trailing quotes
+    result = result.replace(/^"([\s\S]*)"$/, '$1');
+    
+    // 4. Replace doubled quotes with single quotes
+    result = result.replace(/""/g, '"');
+    
+    // 5. Handle any remaining triple or more quotes
+    result = result.replace(/"{3,}/g, '"');
+    
+    return result;
+  },
+
+  /**
    * Process parsed records into the required format
    * @param records The parsed records
    * @param skippedRows The skipped row numbers
@@ -214,9 +300,12 @@ export const csvService = {
     records.forEach((record, index) => {
       const rowNumber = index + 2; // +2 because index is 0-based and we skip the header row
       
-      // Convert triple spaces to line breaks in the back content
+      // Process text content in both front and back fields
+      if (record.front) {
+        record.front = this.processTextContent(record.front);
+      }
       if (record.back) {
-        record.back = this.convertTripleSpacesToLineBreaks(record.back);
+        record.back = this.processTextContent(record.back);
       }
       
       const cardPreview: CardPreview = {
@@ -505,29 +594,5 @@ export const csvService = {
       duplicateCount,
       duplicateDetails
     };
-  },
-
-  /**
-   * Convert triple spaces to line breaks in text and clean up quotes
-   * @param text The text to process
-   * @returns Text with triple spaces converted to line breaks and quotes cleaned up
-   */
-  convertTripleSpacesToLineBreaks(text: string): string {
-    if (!text) {
-      return text;
-    }
-    
-    // Replace three or more consecutive spaces with a line break
-    let result = text.replace(/\s{3,}/g, '\n');
-    
-    // Clean up quotes:
-    
-    // 1. Remove leading and trailing quotes
-    result = result.replace(/^"([\s\S]*)"$/, '$1');
-    
-    // 2. Replace doubled quotes with single quotes
-    result = result.replace(/""/g, '"');
-    
-    return result;
   },
 }; 
