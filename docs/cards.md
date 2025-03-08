@@ -502,6 +502,83 @@ Authorization: Bearer <token>
 }
 ```
 
+### Search Cards
+
+```
+GET /api/cards/search
+```
+
+This endpoint allows searching for cards by their content (front or back text), with optional filtering by deck.
+
+#### Request
+
+Headers:
+```
+Authorization: Bearer <token>
+```
+
+Query Parameters:
+```
+q: Search query (required)
+deckId: Optional deck ID to filter results
+limit: Maximum number of cards to return (default: 20, max: 100)
+offset: Number of cards to skip (default: 0)
+```
+
+Example:
+```
+GET /api/cards/search?q=javascript&deckId=123e4567-e89b-12d3-a456-426614174002&limit=10&offset=0
+```
+
+#### Response
+
+```json
+{
+  "status": "success",
+  "data": {
+    "cards": [
+      {
+        "id": "123e4567-e89b-12d3-a456-426614174000",
+        "userId": "123e4567-e89b-12d3-a456-426614174001",
+        "deckId": "123e4567-e89b-12d3-a456-426614174002",
+        "front": "What is JavaScript?",
+        "back": "A programming language for the web.",
+        "state": 0,
+        "due": null,
+        "stability": 0,
+        "difficulty": 0,
+        "elapsedDays": 0,
+        "scheduledDays": 0,
+        "reps": 0,
+        "lapses": 0,
+        "lastReview": null,
+        "createdAt": "2023-01-01T00:00:00.000Z",
+        "updatedAt": "2023-01-01T00:00:00.000Z",
+        "deckName": "Programming Languages"
+      },
+      // More cards...
+    ],
+    "pagination": {
+      "total": 15,
+      "limit": 10,
+      "offset": 0,
+      "hasMore": true
+    },
+    "query": "javascript",
+    "deckId": "123e4567-e89b-12d3-a456-426614174002"
+  }
+}
+```
+
+#### Error Response (Missing Query)
+
+```json
+{
+  "status": "error",
+  "message": "Search query is required"
+}
+```
+
 ## Error Responses
 
 ### Card Not Found

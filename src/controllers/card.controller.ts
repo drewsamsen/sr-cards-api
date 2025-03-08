@@ -313,4 +313,57 @@ export const cardController = {
       },
     });
   }),
+
+  /**
+   * Search for cards by query text
+   */
+  searchCards: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user.id;
+    const query = req.query.q as string;
+    
+    // Parse pagination parameters from query string
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 20;
+    const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
+    
+    // Get optional deck ID filter
+    const deckId = req.query.deckId as string;
+    
+    // Validate search query
+    if (!query || query.trim() === '') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Search query is required'
+      });
+    }
+    
+    // Validate pagination parameters
+    const validatedLimit = Math.min(Math.max(1, limit), 100); // Between 1 and 100
+    const validatedOffset = Math.max(0, offset); // At least 0
+    
+    // Search for cards
+    const { cards, total } = await cardService.searchCards(
+      userId, 
+      query, 
+      {
+        limit: validatedLimit,
+        offset: validatedOffset,
+        deckId: deckId || undefined
+      }
+    );
+    
+    res.status(200).json({
+      status: 'success',
+      data: {
+        cards,
+        pagination: {
+          total,
+          limit: validatedLimit,
+          offset: validatedOffset,
+          hasMore: validatedOffset + cards.length < total
+        },
+        query,
+        deckId: deckId || undefined
+      }
+    });
+  }),
 }; 

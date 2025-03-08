@@ -526,5 +526,72 @@ export const cardService = {
     
     // Convert snake_case DB result to camelCase for API
     return snakeToCamelObject(cardWithDeckInfo) as Card;
-  }
+  },
+
+  /**
+   * Search for cards by query text
+   * @param userId The user ID
+   * @param query The search query
+   * @param options Optional parameters (limit, offset, deckId)
+   * @returns Array of matching cards and total count
+   */
+  async searchCards(
+    userId: string,
+    query: string,
+    options: {
+      limit?: number;
+      offset?: number;
+      deckId?: string;
+    } = {}
+  ): Promise<{ cards: Card[], total: number }> {
+    // Set default values
+    const limit = options.limit || 20;
+    const offset = options.offset || 0;
+    
+    // Build the base query
+    let dbQuery = supabaseAdmin
+      .from('cards')
+      .select(`
+        *,
+        decks:deck_id (
+          name,
+          slug
+        )
+      `, { count: 'exact' })
+      .eq('user_id', userId);
+    
+    // Add search condition for front and back text
+    dbQuery = dbQuery.or(`front.ilike.%${query}%,back.ilike.%${query}%`);
+    
+    // Add deck filter if provided
+    if (options.deckId) {
+      dbQuery = dbQuery.eq('deck_id', options.deckId);
+    }
+    
+    // Execute the query with pagination
+    const { data, count, error } = await dbQuery
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+    
+    if (error) {
+      throw error;
+    }
+    
+    // Convert snake_case DB results to camelCase for API and add deck name
+    const cards = (data || []).map(card => {
+      const cardWithDeckInfo = {
+        ...card,
+        deck_name: card.decks?.name,
+        deck_slug: card.decks?.slug
+      };
+      // Remove the nested decks object before converting
+      delete cardWithDeckInfo.decks;
+      return snakeToCamelObject(cardWithDeckInfo) as Card;
+    });
+    
+    return {
+      cards,
+      total: count || 0
+    };
+  },
 }; 

@@ -10,6 +10,9 @@ router.use(authenticate);
 // Get all cards
 router.get('/', cardController.getAllCards);
 
+// Search cards
+router.get('/search', cardController.searchCards);
+
 // Get cards due for review
 router.get('/review', cardController.getCardsForReview);
 
