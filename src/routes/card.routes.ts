@@ -26,7 +26,7 @@ router.patch('/:id', cardController.updateCard);
 router.delete('/:id', cardController.deleteCard);
 
 // Submit a review for a card
-router.post('/:id/review', cardController.reviewCard);
+router.post('/:cardId/review', cardController.reviewCard);
 
 // Get logs for a specific card
 router.get('/:id/logs', cardController.getCardLogs);

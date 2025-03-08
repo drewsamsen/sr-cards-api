@@ -30,17 +30,40 @@ export const logService = {
    * Create a new review log
    */
   async createReviewLog(logData: ReviewLog): Promise<void> {
+    console.log(`[DEBUG] Creating review log for card ${logData.cardId}, user ${logData.userId}, rating ${logData.rating}`);
+    
     // Convert camelCase to snake_case for database
     const dbData = camelToSnakeObject(logData);
+
+    console.log(`[DEBUG] Review log data prepared for database:`, {
+      card_id: dbData.card_id,
+      user_id: dbData.user_id,
+      rating: dbData.rating,
+      state: dbData.state
+    });
 
     const { error } = await supabaseAdmin
       .from('logs')
       .insert(dbData);
 
     if (error) {
-      console.error('Error creating review log:', error);
+      console.error('[ERROR] Error creating review log:', {
+        error,
+        message: error.message || '',
+        details: error.details || '',
+        hint: error.hint || '',
+        code: error.code || '',
+        data: {
+          card_id: dbData.card_id,
+          user_id: dbData.user_id,
+          rating: dbData.rating,
+          state: dbData.state
+        }
+      });
       // Don't throw the error to prevent disrupting the review flow
       // Just log it for debugging
+    } else {
+      console.log(`[DEBUG] Successfully created review log for card ${logData.cardId}`);
     }
   },
 
@@ -94,55 +117,91 @@ export const logService = {
       cardType = 'all' 
     } = params;
 
+    // Use the new getReviewCounts method to get both counts
+    const counts = await this.getReviewCounts({
+      userId,
+      deckId,
+      timeWindow
+    });
+
+    // Return the appropriate count based on the cardType
+    if (cardType === 'new') {
+      return counts.newCardsCount;
+    } else if (cardType === 'review') {
+      return counts.reviewCardsCount;
+    } else {
+      // For 'all', return the sum of both counts
+      return counts.newCardsCount + counts.reviewCardsCount;
+    }
+  },
+
+  /**
+   * Get both new cards count and review cards count in a single call
+   * @param params Parameters for counting reviews
+   * @returns Object containing both new cards count and review cards count
+   */
+  async getReviewCounts(params: Omit<ReviewCountParams, 'cardType'>): Promise<{
+    newCardsCount: number;
+    reviewCardsCount: number;
+  }> {
+    const { 
+      userId, 
+      deckId, 
+      timeWindow = 24
+    } = params;
+
+    console.log(`[DEBUG] getReviewCounts called with params:`, {
+      userId,
+      deckId,
+      timeWindow
+    });
+
     // Calculate the timestamp for the start of the time window
     const timeAgo = new Date();
     timeAgo.setHours(timeAgo.getHours() - timeWindow);
     
-    // Start building the query
-    let query = supabaseAdmin
-      .from('logs')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .gte('created_at', timeAgo.toISOString());
+    console.log(`[DEBUG] Time window start: ${timeAgo.toISOString()}`);
     
-    // If a deck ID is provided, we need to join with the cards table
-    // to filter by deck_id
-    if (deckId) {
-      // We need to get card IDs for the specified deck
-      const { data: cardIds, error: cardError } = await supabaseAdmin
-        .from('cards')
-        .select('id')
-        .eq('deck_id', deckId)
-        .eq('user_id', userId);
-      
-      if (cardError) {
-        console.error('Error getting card IDs for deck:', cardError);
-        return 0;
-      }
-      
-      if (!cardIds || cardIds.length === 0) {
-        return 0; // No cards in this deck
-      }
-      
-      // Add the card IDs to the query
-      query = query.in('card_id', cardIds.map(card => card.id));
-    }
+    // Use the database function with JOIN approach to get both counts in one call
+    console.log(`[DEBUG] Executing count_reviews function`);
     
-    // Add filter for card type if specified
-    if (cardType === 'new') {
-      query = query.eq('state', 0);
-    } else if (cardType === 'review') {
-      query = query.gt('state', 0);
-    }
-    
-    // Execute the query
-    const { count, error } = await query;
+    // The database function expects UUID types, not strings
+    const { data, error } = await supabaseAdmin.rpc('count_reviews', {
+      p_user_id: userId,
+      p_time_ago: timeAgo.toISOString(),
+      p_deck_id: deckId || null
+    });
     
     if (error) {
-      console.error('Error counting reviews:', error);
-      return 0;
+      console.error('[ERROR] Error counting reviews:', {
+        error,
+        message: error.message || '',
+        details: error.details || '',
+        hint: error.hint || '',
+        code: error.code || '',
+        params: {
+          p_user_id: userId,
+          p_time_ago: timeAgo.toISOString(),
+          p_deck_id: deckId || null
+        }
+      });
+      return { newCardsCount: 0, reviewCardsCount: 0 };
     }
     
-    return count || 0;
+    // The data will be an array with a single row containing both counts
+    // Convert BIGINT values to JavaScript numbers
+    const counts = data?.[0] || { new_cards_count: 0, review_cards_count: 0 };
+    const newCardsCount = Number(counts.new_cards_count || 0);
+    const reviewCardsCount = Number(counts.review_cards_count || 0);
+    
+    console.log(`[DEBUG] Review counts result:`, {
+      newCardsCount,
+      reviewCardsCount
+    });
+    
+    return {
+      newCardsCount,
+      reviewCardsCount
+    };
   }
 }; 

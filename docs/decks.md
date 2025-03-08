@@ -263,34 +263,7 @@ Authorization: Bearer <jwt-token>
 }
 ```
 
-**Response (Daily Limit Reached):**
-```json
-{
-  "status": "success",
-  "data": {
-    "deck": {
-      "id": "uuid-1",
-      "userId": "user-uuid",
-      "name": "JavaScript Basics",
-      "slug": "javascript-basics",
-      "description": "Flashcards for JavaScript fundamentals",
-      "createdAt": "2023-03-04T12:00:00Z",
-      "updatedAt": "2023-03-04T12:00:00Z"
-    },
-    "dailyLimitReached": true,
-    "message": "You've reached your daily review limits for this deck. Come back later!",
-    "dailyProgress": {
-      "newCardsSeen": 5,
-      "newCardsLimit": 5,
-      "reviewCardsSeen": 15,
-      "reviewCardsLimit": 15,
-      "totalRemaining": 0
-    }
-  }
-}
-```
-
-**Response (All Caught Up):**
+**Response (All Caught Up / Daily Limit Reached):**
 ```json
 {
   "status": "success",
@@ -305,18 +278,24 @@ Authorization: Bearer <jwt-token>
       "updatedAt": "2023-03-04T12:00:00Z"
     },
     "allCaughtUp": true,
-    "message": "You're all caught up! No cards due for review at this time.",
+    "message": "Great job! You've completed all your reviews for now. Check back later for more.",
     "totalCards": 25,
     "dailyProgress": {
-      "newCardsSeen": 2,
+      "newCardsSeen": 5,
       "newCardsLimit": 5,
       "reviewCardsSeen": 10,
       "reviewCardsLimit": 15,
-      "totalRemaining": 8
+      "totalRemaining": 0
     }
   }
 }
 ```
+
+> **Note**: This response is returned in two scenarios:
+> 1. When the user has reached their daily review limits
+> 2. When all cards in the deck are caught up (none due for review)
+> 
+> From the user's perspective, both scenarios represent the same outcome: they've completed all available reviews for now.
 
 **Response (Empty Deck):**
 ```json

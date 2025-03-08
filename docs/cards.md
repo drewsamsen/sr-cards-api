@@ -315,7 +315,7 @@ Authorization: Bearer <token>
 ### Submit Card Review
 
 ```
-POST /api/cards/:id/review
+POST /api/cards/:cardId/review
 ```
 
 This endpoint processes a card review and updates the FSRS parameters accordingly. It respects the user's daily limits for new cards and reviews per deck.

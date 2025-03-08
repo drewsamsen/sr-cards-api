@@ -142,7 +142,7 @@ card-api/
 - `GET /api/cards/:id`: Get a specific card by ID
 - `GET /api/cards/review`: Get cards due for review
 - `POST /api/cards`: Create a new card
-- `POST /api/cards/:id/review`: Submit a review for a card
+- `POST /api/cards/:cardId/review`: Submit a review for a card
 - `PATCH /api/cards/:id`: Update a card
 - `DELETE /api/cards/:id`: Delete a card
 

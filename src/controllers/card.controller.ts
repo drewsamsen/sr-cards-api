@@ -269,65 +269,66 @@ export const cardController = {
    * Submit a review for a card
    */
   reviewCard: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user.id;
-    const cardId = req.params.id;
-    const { rating, reviewedAt } = req.body;
-
-    // Validate rating
-    if (!rating || rating < 1 || rating > 4) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Valid rating (1-4) is required',
-      });
-    }
-
-    // Prepare review data
-    const reviewData: CardReviewDTO = {
-      rating,
-    };
-    
-    // Add reviewedAt if provided
-    if (reviewedAt) {
-      reviewData.reviewedAt = reviewedAt;
-    };
-    
-    console.log('Review data prepared:', reviewData);
-
     try {
+      const { cardId } = req.params;
+      const reviewData: CardReviewDTO = req.body;
+      const userId = req.user?.id;
+
+      console.log(`[DEBUG] Card review submission received:`, {
+        cardId,
+        userId,
+        rating: reviewData.rating,
+        reviewedAt: reviewData.reviewedAt
+      });
+
+      if (!userId) {
+        console.error('[ERROR] User ID not found in request');
+        res.status(401).json({
+          status: 'error',
+          message: 'Unauthorized'
+        });
+        return;
+      }
+
       const result = await cardService.submitCardReview(cardId, reviewData, userId);
 
       if (!result) {
-        return res.status(404).json({
+        console.log(`[DEBUG] Card ${cardId} not found or does not belong to user ${userId}`);
+        res.status(404).json({
           status: 'error',
-          message: 'Card not found',
+          message: 'Card not found'
         });
+        return;
       }
 
-      // Check if the result indicates a daily limit has been reached
+      // Check if we got a daily limit reached response
       if ('dailyLimitReached' in result) {
-        return res.status(200).json({
+        console.log(`[DEBUG] Daily limit reached for user ${userId}`);
+        res.status(200).json({
           status: 'success',
-          data: {
-            dailyLimitReached: result.dailyLimitReached,
-            message: result.message,
-            dailyProgress: result.dailyProgress
-          },
+          message: result.message,
+          dailyLimitReached: true,
+          dailyProgress: result.dailyProgress
         });
+        return;
       }
 
-      // Normal card review response
+      console.log(`[DEBUG] Card review successful for card ${cardId}, new state: ${result.state}`);
       res.status(200).json({
         status: 'success',
         data: {
-          card: result,
-        },
+          card: result
+        }
       });
     } catch (error) {
-      // If there's an error with the FSRS calculation, return a 500 error
-      console.error('Error processing card review:', error);
+      console.error('[ERROR] Error in submitCardReview controller:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : ''
+      });
       res.status(500).json({
         status: 'error',
-        message: 'Failed to process card review. FSRS calculation error.',
+        message: 'An error occurred while submitting the review'
       });
     }
   }),

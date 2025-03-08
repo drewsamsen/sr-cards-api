@@ -160,58 +160,100 @@ export const deckController = {
    * Get a random card from a deck for review
    */
   getDeckReview: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
-    const userId = req.user.id;
-    const slug = req.params.slug;
+    try {
+      const { slug } = req.params;
+      const userId = req.user?.id;
 
-    const result = await deckService.getRandomCardForReview(slug, userId);
+      console.log(`[DEBUG] Random card for review requested for deck ${slug}, user ${userId}`);
 
-    if (!result.deck) {
-      return res.status(404).json({
+      if (!userId) {
+        console.error('[ERROR] User ID not found in request');
+        res.status(401).json({
+          status: 'error',
+          message: 'Unauthorized'
+        });
+        return;
+      }
+
+      const result = await deckService.getRandomCardForReview(slug, userId);
+
+      if (!result.deck) {
+        console.log(`[DEBUG] Deck ${slug} not found for user ${userId}`);
+        res.status(404).json({
+          status: 'error',
+          message: 'Deck not found'
+        });
+        return;
+      }
+
+      if (result.dailyLimitReached || result.allCaughtUp) {
+        // Unified handling for both "daily limit reached" and "all caught up" scenarios
+        console.log(`[DEBUG] User has completed all reviews for deck ${slug} (${result.dailyLimitReached ? 'daily limit reached' : 'all caught up'})`);
+        res.status(200).json({
+          status: 'success',
+          data: {
+            deck: result.deck,
+            card: null,
+            allCaughtUp: true,
+            message: "Great job! You've completed all your reviews for now. Check back later for more.",
+            totalCards: result.totalCards,
+            dailyProgress: result.dailyProgress
+          }
+        });
+        return;
+      }
+      
+      // Check if this is an "Empty Deck" response
+      if (result.emptyDeck) {
+        console.log(`[DEBUG] Deck ${slug} is empty`);
+        res.status(200).json({
+          status: 'success',
+          data: {
+            deck: result.deck,
+            card: null,
+            emptyDeck: true,
+            message: "This deck doesn't have any cards yet. Add some cards to start reviewing!",
+            dailyProgress: result.dailyProgress
+          }
+        });
+        return;
+      }
+      
+      // Default case for no cards available (should rarely happen with the above checks)
+      if (!result.card) {
+        console.log(`[DEBUG] No cards available for review in deck ${slug}`);
+        res.status(200).json({
+          status: 'success',
+          data: {
+            deck: result.deck,
+            card: null,
+            message: 'No cards available for review',
+            dailyProgress: result.dailyProgress
+          }
+        });
+        return;
+      }
+
+      console.log(`[DEBUG] Returning card ${result.card.id} for review, state: ${result.card.state}, remaining reviews: ${result.dailyProgress?.totalRemaining}`);
+      res.status(200).json({
+        status: 'success',
+        data: {
+          deck: result.deck,
+          card: result.card,
+          reviewMetrics: result.reviewMetrics,
+          dailyProgress: result.dailyProgress
+        }
+      });
+    } catch (error) {
+      console.error('[ERROR] Error in getRandomCardForReview controller:', {
+        error,
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : ''
+      });
+      res.status(500).json({
         status: 'error',
-        message: 'Deck not found',
+        message: 'An error occurred while fetching a card for review'
       });
     }
-
-    if (result.dailyLimitReached) {
-      return res.status(200).json({
-        status: 'success',
-        data: {
-          deck: result.deck,
-          dailyLimitReached: true,
-          message: result.message || "You've reached your daily review limits for this deck. Come back later!",
-          dailyProgress: result.dailyProgress
-        },
-      });
-    }
-
-    if (result.allCaughtUp) {
-      return res.status(200).json({
-        status: 'success',
-        data: {
-          deck: result.deck,
-          allCaughtUp: true,
-          message: "You're all caught up! No cards due for review at this time.",
-          totalCards: result.totalCards,
-          dailyProgress: result.dailyProgress
-        },
-      });
-    }
-
-    if (!result.card) {
-      return res.status(200).json({
-        status: 'success',
-        data: {
-          deck: result.deck,
-          emptyDeck: true,
-          message: "This deck doesn't have any cards yet. Add some cards to start reviewing!",
-          dailyProgress: result.dailyProgress
-        },
-      });
-    }
-
-    res.status(200).json({
-      status: 'success',
-      data: result,
-    });
   }),
 }; 
