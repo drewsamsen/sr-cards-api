@@ -213,6 +213,12 @@ export const csvService = {
     // Validate each row
     records.forEach((record, index) => {
       const rowNumber = index + 2; // +2 because index is 0-based and we skip the header row
+      
+      // Convert triple spaces to line breaks in the back content
+      if (record.back) {
+        record.back = this.convertTripleSpacesToLineBreaks(record.back);
+      }
+      
       const cardPreview: CardPreview = {
         front: record.front || '',
         back: record.back || '',
@@ -499,5 +505,29 @@ export const csvService = {
       duplicateCount,
       duplicateDetails
     };
+  },
+
+  /**
+   * Convert triple spaces to line breaks in text and clean up quotes
+   * @param text The text to process
+   * @returns Text with triple spaces converted to line breaks and quotes cleaned up
+   */
+  convertTripleSpacesToLineBreaks(text: string): string {
+    if (!text) {
+      return text;
+    }
+    
+    // Replace three or more consecutive spaces with a line break
+    let result = text.replace(/\s{3,}/g, '\n');
+    
+    // Clean up quotes:
+    
+    // 1. Remove leading and trailing quotes
+    result = result.replace(/^"([\s\S]*)"$/, '$1');
+    
+    // 2. Replace doubled quotes with single quotes
+    result = result.replace(/""/g, '"');
+    
+    return result;
   },
 }; 
