@@ -224,16 +224,11 @@ export const deckService = {
    * Get a random card from a deck for review
    */
   async getRandomCardForReview(slug: string, userId: string): Promise<ReviewResult> {
-    console.log(`[DEBUG] getRandomCardForReview called for deck ${slug}, user ${userId}`);
-    
     const deck = await this.getDeckBySlug(slug, userId);
     
     if (!deck) {
-      console.log(`[DEBUG] Deck ${slug} not found for user ${userId}`);
       return { deck: null, card: null };
     }
-    
-    console.log(`[DEBUG] Found deck: ${deck.id}, name: ${deck.name}`);
     
     // Get user settings to check daily limits
     const userSettings = await userSettingsService.getUserSettings(userId);
@@ -245,8 +240,6 @@ export const deckService = {
     const newCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
     const reviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
     
-    console.log(`[DEBUG] User limits: newCardsLimit=${newCardsLimit}, reviewCardsLimit=${reviewCardsLimit}`);
-    
     // Get counts of cards reviewed in the last 24 hours in a single call
     const { newCardsCount, reviewCardsCount } = await logService.getReviewCounts({
       userId,
@@ -254,14 +247,10 @@ export const deckService = {
       timeWindow: 24
     });
     
-    console.log(`[DEBUG] Card counts: newCardsCount=${newCardsCount}, reviewCardsCount=${reviewCardsCount}`);
-    
     // Calculate remaining cards
     const newCardsRemaining = Math.max(0, newCardsLimit - newCardsCount);
     const reviewCardsRemaining = Math.max(0, reviewCardsLimit - reviewCardsCount);
     const totalRemaining = newCardsRemaining + reviewCardsRemaining;
-    
-    console.log(`[DEBUG] Remaining cards: newCardsRemaining=${newCardsRemaining}, reviewCardsRemaining=${reviewCardsRemaining}, totalRemaining=${totalRemaining}`);
     
     // Create daily progress object
     const dailyProgress: DailyProgressResponse = {
@@ -271,8 +260,6 @@ export const deckService = {
       reviewCardsLimit,
       totalRemaining
     };
-    
-    console.log(`[DEBUG] Daily progress:`, dailyProgress);
     
     // Check if daily limits are reached
     if (totalRemaining === 0) {

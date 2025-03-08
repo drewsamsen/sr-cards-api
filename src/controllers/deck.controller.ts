@@ -164,8 +164,6 @@ export const deckController = {
       const { slug } = req.params;
       const userId = req.user?.id;
 
-      console.log(`[DEBUG] Random card for review requested for deck ${slug}, user ${userId}`);
-
       if (!userId) {
         console.error('[ERROR] User ID not found in request');
         res.status(401).json({
@@ -178,7 +176,6 @@ export const deckController = {
       const result = await deckService.getRandomCardForReview(slug, userId);
 
       if (!result.deck) {
-        console.log(`[DEBUG] Deck ${slug} not found for user ${userId}`);
         res.status(404).json({
           status: 'error',
           message: 'Deck not found'
@@ -188,7 +185,6 @@ export const deckController = {
 
       if (result.dailyLimitReached || result.allCaughtUp) {
         // Unified handling for both "daily limit reached" and "all caught up" scenarios
-        console.log(`[DEBUG] User has completed all reviews for deck ${slug} (${result.dailyLimitReached ? 'daily limit reached' : 'all caught up'})`);
         res.status(200).json({
           status: 'success',
           data: {
@@ -205,7 +201,6 @@ export const deckController = {
       
       // Check if this is an "Empty Deck" response
       if (result.emptyDeck) {
-        console.log(`[DEBUG] Deck ${slug} is empty`);
         res.status(200).json({
           status: 'success',
           data: {
@@ -221,7 +216,6 @@ export const deckController = {
       
       // Default case for no cards available (should rarely happen with the above checks)
       if (!result.card) {
-        console.log(`[DEBUG] No cards available for review in deck ${slug}`);
         res.status(200).json({
           status: 'success',
           data: {
@@ -234,7 +228,6 @@ export const deckController = {
         return;
       }
 
-      console.log(`[DEBUG] Returning card ${result.card.id} for review, state: ${result.card.state}, remaining reviews: ${result.dailyProgress?.totalRemaining}`);
       res.status(200).json({
         status: 'success',
         data: {

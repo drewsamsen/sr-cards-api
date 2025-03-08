@@ -30,17 +30,8 @@ export const logService = {
    * Create a new review log
    */
   async createReviewLog(logData: ReviewLog): Promise<void> {
-    console.log(`[DEBUG] Creating review log for card ${logData.cardId}, user ${logData.userId}, rating ${logData.rating}`);
-    
     // Convert camelCase to snake_case for database
     const dbData = camelToSnakeObject(logData);
-
-    console.log(`[DEBUG] Review log data prepared for database:`, {
-      card_id: dbData.card_id,
-      user_id: dbData.user_id,
-      rating: dbData.rating,
-      state: dbData.state
-    });
 
     const { error } = await supabaseAdmin
       .from('logs')
@@ -52,18 +43,10 @@ export const logService = {
         message: error.message || '',
         details: error.details || '',
         hint: error.hint || '',
-        code: error.code || '',
-        data: {
-          card_id: dbData.card_id,
-          user_id: dbData.user_id,
-          rating: dbData.rating,
-          state: dbData.state
-        }
+        code: error.code || ''
       });
       // Don't throw the error to prevent disrupting the review flow
       // Just log it for debugging
-    } else {
-      console.log(`[DEBUG] Successfully created review log for card ${logData.cardId}`);
     }
   },
 
@@ -150,22 +133,11 @@ export const logService = {
       timeWindow = 24
     } = params;
 
-    console.log(`[DEBUG] getReviewCounts called with params:`, {
-      userId,
-      deckId,
-      timeWindow
-    });
-
     // Calculate the timestamp for the start of the time window
     const timeAgo = new Date();
     timeAgo.setHours(timeAgo.getHours() - timeWindow);
     
-    console.log(`[DEBUG] Time window start: ${timeAgo.toISOString()}`);
-    
     // Use the database function with JOIN approach to get both counts in one call
-    console.log(`[DEBUG] Executing count_reviews function`);
-    
-    // The database function expects UUID types, not strings
     const { data, error } = await supabaseAdmin.rpc('count_reviews', {
       p_user_id: userId,
       p_time_ago: timeAgo.toISOString(),
@@ -178,12 +150,7 @@ export const logService = {
         message: error.message || '',
         details: error.details || '',
         hint: error.hint || '',
-        code: error.code || '',
-        params: {
-          p_user_id: userId,
-          p_time_ago: timeAgo.toISOString(),
-          p_deck_id: deckId || null
-        }
+        code: error.code || ''
       });
       return { newCardsCount: 0, reviewCardsCount: 0 };
     }
@@ -193,11 +160,6 @@ export const logService = {
     const counts = data?.[0] || { new_cards_count: 0, review_cards_count: 0 };
     const newCardsCount = Number(counts.new_cards_count || 0);
     const reviewCardsCount = Number(counts.review_cards_count || 0);
-    
-    console.log(`[DEBUG] Review counts result:`, {
-      newCardsCount,
-      reviewCardsCount
-    });
     
     return {
       newCardsCount,

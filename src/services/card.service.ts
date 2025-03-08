@@ -415,17 +415,12 @@ export const cardService = {
    * Submit a review for a card
    */
   async submitCardReview(cardId: string, reviewData: CardReviewDTO, userId: string): Promise<Card | null | { dailyLimitReached: boolean, message: string, dailyProgress: DailyProgressResponse }> {
-    console.log(`[DEBUG] submitCardReview called for card ${cardId}, user ${userId}, rating ${reviewData.rating}`);
-    
     // First check if the card exists and belongs to the user
     const card = await this.getCardById(cardId, userId);
     
     if (!card) {
-      console.log(`[DEBUG] Card ${cardId} not found or does not belong to user ${userId}`);
       return null;
     }
-
-    console.log(`[DEBUG] Found card: ${card.id}, deck: ${card.deckId}, state: ${card.state}`);
 
     // Check if the user has reached their daily limits
     // Get user settings
@@ -437,21 +432,15 @@ export const cardService = {
     const newCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
     const reviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
     
-    console.log(`[DEBUG] User limits: newCardsLimit=${newCardsLimit}, reviewCardsLimit=${reviewCardsLimit}`);
-    
     // Determine if this is a new card or a review card
     const isNewCard = card.state === 0;
-    console.log(`[DEBUG] Card type: ${isNewCard ? 'new' : 'review'}`);
     
     // Get counts of cards reviewed in the last 24 hours in a single call
-    console.log(`[DEBUG] Getting review counts for user ${userId}, deck ${card.deckId}`);
     const { newCardsCount, reviewCardsCount } = await logService.getReviewCounts({
       userId,
       deckId: card.deckId,
       timeWindow: 24
     });
-    
-    console.log(`[DEBUG] Card counts: newCardsCount=${newCardsCount}, reviewCardsCount=${reviewCardsCount}`);
     
     // Create daily progress object
     const dailyProgress: DailyProgressResponse = {
@@ -462,12 +451,9 @@ export const cardService = {
       totalRemaining: Math.max(0, newCardsLimit - newCardsCount) + Math.max(0, reviewCardsLimit - reviewCardsCount)
     };
     
-    console.log(`[DEBUG] Daily progress:`, dailyProgress);
-    
     // Check if the user has reached their daily limit for this type of card
     if ((isNewCard && newCardsCount >= newCardsLimit) || 
         (!isNewCard && reviewCardsCount >= reviewCardsLimit)) {
-      console.log(`[DEBUG] Daily limit reached for ${isNewCard ? 'new' : 'review'} cards`);
       return {
         dailyLimitReached: true,
         message: `You've reached your daily limit for ${isNewCard ? 'new' : 'review'} cards. Come back later!`,
@@ -475,22 +461,14 @@ export const cardService = {
       };
     }
 
-    console.log(`[DEBUG] Processing review with FSRS for card ${cardId}`);
-    // Process the review with FSRS - this will throw an error if FSRS calculation fails
     try {
+      // Process the review with FSRS
       const processedReview = await fsrsService.processReview(
         card,
         reviewData.rating,
         userId, // Pass userId to use user-specific FSRS parameters
         reviewData.reviewedAt ? new Date(reviewData.reviewedAt) : undefined
       );
-
-      console.log(`[DEBUG] FSRS processed review:`, {
-        due: processedReview.due,
-        state: processedReview.state,
-        stability: processedReview.stability,
-        difficulty: processedReview.difficulty
-      });
 
       // Ensure all date fields are properly formatted as ISO strings
       const updateData = camelToSnakeObject({
@@ -505,7 +483,6 @@ export const cardService = {
         lastReview: processedReview.last_review instanceof Date ? processedReview.last_review.toISOString() : null
       });
 
-      console.log(`[DEBUG] Updating card ${cardId} with new state ${processedReview.state}`);
       // Update the card in the database
       const { data, error } = await supabaseAdmin
         .from('cards')
@@ -532,7 +509,6 @@ export const cardService = {
         throw error;
       }
 
-      console.log(`[DEBUG] Card ${cardId} updated successfully, creating review log`);
       // Create a log entry for this review
       try {
         await logService.createReviewLog({
@@ -548,15 +524,12 @@ export const cardService = {
           scheduledDays: processedReview.logData.scheduled_days,
           review: processedReview.logData.review instanceof Date ? processedReview.logData.review.toISOString() : new Date().toISOString()
         });
-        console.log(`[DEBUG] Review log created successfully for card ${cardId}`);
       } catch (logError) {
         // Log the error but don't fail the review process
         console.error('[ERROR] Failed to create review log:', {
           error: logError,
           message: logError instanceof Error ? logError.message : 'Unknown error',
-          stack: logError instanceof Error ? logError.stack : '',
-          cardId,
-          userId
+          stack: logError instanceof Error ? logError.stack : ''
         });
       }
 
@@ -572,15 +545,12 @@ export const cardService = {
       
       // Convert snake_case DB result to camelCase for API
       const result = snakeToCamelObject(cardWithDeckInfo) as Card;
-      console.log(`[DEBUG] Returning updated card ${result.id} with state ${result.state}`);
       return result;
     } catch (error) {
       console.error('[ERROR] Error in submitCardReview:', {
         error,
         message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : '',
-        cardId,
-        userId
+        stack: error instanceof Error ? error.stack : ''
       });
       throw error;
     }
