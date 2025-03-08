@@ -31,6 +31,8 @@ export interface ImportSummary {
   totalRows: number;
   validRows: number;
   invalidRows: number;
+  duplicateCards?: number;
+  duplicateDetails?: DuplicateCardError[];
   skippedHeaderRows?: number[];
   errors?: ImportError[];
 }
@@ -39,6 +41,13 @@ export interface ImportSummary {
 export interface ImportError {
   row: number;
   message: string;
+}
+
+// Duplicate card error interface
+export interface DuplicateCardError {
+  row: number;
+  cardFront: string;
+  existingCardFront: string;
 }
 
 // Request DTOs

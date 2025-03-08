@@ -135,7 +135,7 @@ Authorization: Bearer <jwt-token>
 }
 ```
 
-**Response with Validation Errors:**
+**Response with Validation Errors and Duplicates:**
 ```json
 {
   "status": "success",
@@ -145,9 +145,17 @@ Authorization: Bearer <jwt-token>
       "deckId": "deck-uuid",
       "status": "pending",
       "summary": {
-        "totalRows": 3,
-        "validRows": 1,
+        "totalRows": 5,
+        "validRows": 2,
         "invalidRows": 2,
+        "duplicateCards": 1,
+        "duplicateDetails": [
+          {
+            "row": 5,
+            "cardFront": "What is CSS?",
+            "existingCardFront": "What is CSS?"
+          }
+        ],
         "errors": [
           {
             "row": 2,
@@ -165,6 +173,11 @@ Authorization: Bearer <jwt-token>
       {
         "front": "What is JavaScript?",
         "back": "A programming language",
+        "status": "valid"
+      },
+      {
+        "front": "What is HTML?",
+        "back": "HyperText Markup Language",
         "status": "valid"
       },
       {
@@ -215,24 +228,33 @@ Authorization: Bearer <jwt-token>
 }
 ```
 
-**Response with Partial Success:**
+**Response with Partial Success and Duplicates:**
 ```json
 {
   "status": "success",
   "data": {
     "importId": "import-uuid",
-    "status": "failed",
+    "status": "completed",
     "summary": {
-      "totalRows": 3,
-      "validRows": 1,
-      "invalidRows": 2,
-      "errors": [
-        {
-          "row": 2,
-          "message": "Error creating card: Database constraint violation"
-        },
+      "totalRows": 10,
+      "validRows": 7,
+      "invalidRows": 1,
+      "duplicateCards": 2,
+      "duplicateDetails": [
         {
           "row": 3,
+          "cardFront": "What is JavaScript?",
+          "existingCardFront": "What is JavaScript?"
+        },
+        {
+          "row": 5,
+          "cardFront": "What is a variable?",
+          "existingCardFront": "What is a Variable?"
+        }
+      ],
+      "errors": [
+        {
+          "row": 8,
           "message": "Error creating card: Invalid data format"
         }
       ]
@@ -332,4 +354,91 @@ Authorization: Bearer <jwt-token>
 - CSV data is validated before being stored
 - Only the first 10 rows are returned in the preview
 - The import process is transactional, ensuring data consistency
-- Errors during import are tracked and reported in detail 
+- Errors during import are tracked and reported in detail
+- Duplicate card detection prevents creating cards that are too similar to existing ones
+
+### Duplicate Card Detection
+
+During import, the system checks each card against existing cards in the target deck to prevent duplicates. The duplicate detection is:
+
+- **Case-insensitive**: "What is JavaScript?" and "what is javascript?" are considered duplicates
+- **Punctuation-agnostic**: "What is JavaScript?" and "What is JavaScript" are considered duplicates
+- **Fuzzy**: Minor differences like typos are still detected as duplicates
+
+**Duplicates in Preview Phase:**
+Duplicate cards are detected during both the preview and confirmation phases:
+
+1. In the preview phase, potential duplicates are identified and marked as invalid with a specific error message
+2. The preview response includes a `duplicateCards` count and `duplicateDetails` array in the summary
+3. Duplicate cards are **omitted** from the preview array to focus on valid cards and other types of errors
+4. This allows you to see which cards would be imported and which have validation issues, without cluttering the preview with duplicates
+
+The `duplicateDetails` array in the summary provides complete information about all detected duplicates, including:
+- The row number in the original CSV
+- The card front text from the CSV
+- The existing card front text it matched with
+
+**Example Preview Response with Duplicates:**
+```json
+{
+  "status": "success",
+  "data": {
+    "import": {
+      "id": "import-uuid",
+      "deckId": "deck-uuid",
+      "status": "pending",
+      "summary": {
+        "totalRows": 10,
+        "validRows": 7,
+        "invalidRows": 1,
+        "duplicateCards": 2,
+        "duplicateDetails": [
+          {
+            "row": 3,
+            "cardFront": "What is JavaScript?",
+            "existingCardFront": "What is JavaScript?"
+          },
+          {
+            "row": 5,
+            "cardFront": "What is a variable?",
+            "existingCardFront": "What is a Variable?"
+          }
+        ]
+      },
+      "expiresAt": "2023-06-01T12:30:00Z"
+    },
+    "preview": [
+      {
+        "front": "What is HTML?",
+        "back": "HyperText Markup Language",
+        "status": "valid"
+      },
+      {
+        "front": "What is CSS?",
+        "back": "Cascading Style Sheets",
+        "status": "valid"
+      },
+      {
+        "front": "What is React?",
+        "back": "A JavaScript library for building user interfaces",
+        "status": "valid"
+      }
+    ]
+  }
+}
+```
+
+If duplicates are found during import:
+
+1. They are counted separately from other errors in the `duplicateCards` field
+2. Detailed information is provided in the `duplicateDetails` array, including:
+   - The row number in the original CSV
+   - The card front text from the CSV
+   - The existing card front text it matched with
+
+This allows you to:
+- See exactly how many duplicates were detected
+- Identify which rows contained duplicates
+- Understand why they were considered duplicates (by comparing the front text)
+
+The rest of the import will continue even if duplicates are found, allowing you to import large sets of cards while still getting a detailed report of any issues. 

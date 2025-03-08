@@ -115,9 +115,121 @@ export const cardService = {
   },
 
   /**
+   * Check if a similar card front already exists in the deck
+   * @param front The card front to check
+   * @param deckId The deck ID
+   * @param userId The user ID
+   * @returns The similar card if found, null otherwise
+   */
+  async findSimilarCardFront(front: string, deckId: string, userId: string): Promise<Card | null> {
+    try {
+      // Normalize the front text for comparison
+      const normalizedFront = front.trim().toLowerCase();
+      
+      // Get all cards in the deck
+      const { data, error } = await supabaseAdmin
+        .from('cards')
+        .select('*')
+        .eq('deck_id', deckId)
+        .eq('user_id', userId);
+        
+      if (error) {
+        throw error;
+      }
+      
+      if (!data || data.length === 0) {
+        return null;
+      }
+      
+      // Check for similar fronts
+      const similarCard = data.find(card => {
+        // Normalize the card front
+        const cardFront = card.front.trim().toLowerCase();
+        
+        // Exact match
+        if (cardFront === normalizedFront) {
+          return true;
+        }
+        
+        // Very similar (e.g., only differs by punctuation or whitespace)
+        const simplifiedCardFront = cardFront.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+        const simplifiedFront = normalizedFront.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ');
+        
+        if (simplifiedCardFront === simplifiedFront) {
+          return true;
+        }
+        
+        // Levenshtein distance for fuzzy matching (for very similar text)
+        // Only check if the lengths are reasonably close to avoid unnecessary computation
+        if (Math.abs(simplifiedCardFront.length - simplifiedFront.length) <= 3) {
+          const distance = this.levenshteinDistance(simplifiedCardFront, simplifiedFront);
+          // If the strings are very similar (distance is small relative to length)
+          const threshold = Math.max(2, Math.floor(simplifiedFront.length * 0.2)); // 20% of length or at least 2
+          if (distance <= threshold) {
+            return true;
+          }
+        }
+        
+        return false;
+      });
+      
+      if (similarCard) {
+        return snakeToCamelObject(similarCard) as Card;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error finding similar card front:', error);
+      return null; // Return null on error to allow card creation to proceed
+    }
+  },
+  
+  /**
+   * Calculate Levenshtein distance between two strings
+   * @param a First string
+   * @param b Second string
+   * @returns The Levenshtein distance
+   */
+  levenshteinDistance(a: string, b: string): number {
+    const matrix: number[][] = [];
+    
+    // Initialize the matrix
+    for (let i = 0; i <= b.length; i++) {
+      matrix[i] = [i];
+    }
+    
+    for (let j = 0; j <= a.length; j++) {
+      matrix[0][j] = j;
+    }
+    
+    // Fill the matrix
+    for (let i = 1; i <= b.length; i++) {
+      for (let j = 1; j <= a.length; j++) {
+        if (b.charAt(i - 1) === a.charAt(j - 1)) {
+          matrix[i][j] = matrix[i - 1][j - 1];
+        } else {
+          matrix[i][j] = Math.min(
+            matrix[i - 1][j - 1] + 1, // substitution
+            matrix[i][j - 1] + 1,     // insertion
+            matrix[i - 1][j] + 1      // deletion
+          );
+        }
+      }
+    }
+    
+    return matrix[b.length][a.length];
+  },
+
+  /**
    * Create a new card
    */
   async createCard(cardData: CreateCardDTO, deckId: string, userId: string): Promise<Card> {
+    // Check for similar card fronts
+    const similarCard = await this.findSimilarCardFront(cardData.front, deckId, userId);
+    if (similarCard) {
+      throw new Error(`A similar card already exists in this deck: "${similarCard.front}"`);
+    }
+    
     // Create the DB object with snake_case keys
     const dbData = camelToSnakeObject({
       userId,

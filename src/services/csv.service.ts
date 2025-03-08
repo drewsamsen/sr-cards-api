@@ -1,5 +1,6 @@
 import { parse } from 'csv-parse/sync';
 import { ImportError, ImportSummary, CardPreview } from '../models/import.model';
+import { cardService } from './card.service';
 
 interface ParsedCard {
   front: string;
@@ -421,22 +422,82 @@ export const csvService = {
   },
 
   /**
-   * Sanitize CSV data to fix common issues
-   * @param csvData The raw CSV data
+   * Sanitize CSV data
+   * @param csvData The CSV data as a string
    * @returns Sanitized CSV data
    */
   sanitizeCsvData(csvData: string): string {
-    // Replace any lone \r with \n (normalize line endings)
-    let sanitized = csvData.replace(/\r(?!\n)/g, '\n');
-    
-    // Remove any BOM (Byte Order Mark) characters
-    sanitized = sanitized.replace(/^\ufeff/, '');
-    
-    // Ensure the CSV has a header row
-    if (!sanitized.trim().length) {
-      return 'front\tback\ttags';
+    // Remove BOM if present
+    if (csvData.charCodeAt(0) === 0xFEFF) {
+      csvData = csvData.slice(1);
     }
     
-    return sanitized;
-  }
+    // Ensure line endings are consistent
+    csvData = csvData.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    
+    return csvData;
+  },
+
+  /**
+   * Check for duplicate cards in a batch
+   * @param parsedData The parsed card data
+   * @param deckId The deck ID
+   * @param userId The user ID
+   * @returns Array of cards with duplicate status
+   */
+  async checkForDuplicates(parsedData: any[], deckId: string, userId: string): Promise<{
+    cards: CardPreview[];
+    duplicateCount: number;
+    duplicateDetails: any[];
+  }> {
+    const cards: CardPreview[] = [];
+    let duplicateCount = 0;
+    const duplicateDetails: any[] = [];
+
+    // Process each card
+    for (let i = 0; i < parsedData.length; i++) {
+      const card = parsedData[i];
+      
+      // Check if this card is already marked as invalid
+      const cardPreview: CardPreview = {
+        front: card.front,
+        back: card.back,
+        status: 'valid'
+      };
+      
+      if (card.tags) {
+        cardPreview.tags = Array.isArray(card.tags) ? card.tags : [card.tags];
+      }
+      
+      // Only check for duplicates if the card is valid
+      if (cardPreview.status === 'valid' && card.front && card.front.trim() !== '') {
+        try {
+          // Check for similar cards
+          const similarCard = await cardService.findSimilarCardFront(card.front, deckId, userId);
+          if (similarCard) {
+            duplicateCount++;
+            cardPreview.status = 'invalid';
+            cardPreview.error = `Duplicate card: Similar to existing card "${similarCard.front}"`;
+            
+            duplicateDetails.push({
+              row: i + 2, // +2 because index is 0-based and we skip the header row
+              cardFront: card.front,
+              existingCardFront: similarCard.front
+            });
+          }
+        } catch (error) {
+          console.error('Error checking for duplicates:', error);
+          // Don't mark as duplicate if there was an error checking
+        }
+      }
+      
+      cards.push(cardPreview);
+    }
+
+    return {
+      cards,
+      duplicateCount,
+      duplicateDetails
+    };
+  },
 }; 

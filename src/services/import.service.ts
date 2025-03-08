@@ -18,7 +18,27 @@ export const importService = {
       const sanitizedCsvData = csvService.sanitizeCsvData(csvData);
       
       // Parse and validate CSV data with tab delimiter
-      const { parsedData, preview, summary } = csvService.parseAndValidate(sanitizedCsvData);
+      const { parsedData, preview: initialPreview, summary: initialSummary } = csvService.parseAndValidate(sanitizedCsvData);
+
+      // Check for duplicates
+      const { cards: previewWithDuplicates, duplicateCount, duplicateDetails } = 
+        await csvService.checkForDuplicates(parsedData, deckId, userId);
+      
+      // Filter out duplicates from the preview array and take up to 10 valid cards
+      const validCards = previewWithDuplicates.filter(card => card.status === 'valid');
+      const invalidNonDuplicates = previewWithDuplicates.filter(
+        card => card.status === 'invalid' && !card.error?.includes('Duplicate card')
+      );
+      
+      // Combine valid cards and invalid non-duplicates, prioritizing valid cards
+      const preview = [...validCards, ...invalidNonDuplicates].slice(0, 10);
+      
+      // Update summary with duplicate information
+      const summary: ImportSummary = {
+        ...initialSummary,
+        duplicateCards: duplicateCount,
+        duplicateDetails: duplicateDetails.length > 0 ? duplicateDetails : undefined
+      };
 
       // Create a new import record
       const importData = {
@@ -120,12 +140,26 @@ export const importService = {
       const { parsedData, summary } = importRecord;
       let successCount = 0;
       let failureCount = 0;
+      let duplicateCount = 0;
       const errors = [];
+      const duplicateDetails = [];
 
       // Process each card
       for (let i = 0; i < parsedData.length; i++) {
         const card = parsedData[i];
         try {
+          // Check for similar cards before creating
+          const similarCard = await cardService.findSimilarCardFront(card.front, importRecord.deckId, userId);
+          if (similarCard) {
+            duplicateCount++;
+            duplicateDetails.push({
+              row: i + 2, // +2 because index is 0-based and we skip the header row
+              cardFront: card.front,
+              existingCardFront: similarCard.front
+            });
+            continue; // Skip this card and move to the next one
+          }
+          
           // Create the card
           await cardService.createCard({
             front: card.front,
@@ -145,8 +179,10 @@ export const importService = {
       const updatedSummary: ImportSummary = {
         ...summary,
         validRows: successCount,
-        invalidRows: failureCount + (summary.invalidRows || 0),
-        errors: errors.length > 0 ? [...(summary.errors || []), ...errors] : summary.errors
+        invalidRows: failureCount,
+        duplicateCards: duplicateCount,
+        duplicateDetails: duplicateDetails.length > 0 ? duplicateDetails : undefined,
+        errors: errors.length > 0 ? errors : undefined
       };
 
       const { data, error } = await supabaseAdmin

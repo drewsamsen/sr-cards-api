@@ -196,6 +196,8 @@ Authorization: Bearer <token>
 POST /api/decks/:deckId/cards
 ```
 
+This endpoint creates a new card in the specified deck.
+
 #### Request
 
 Headers:
@@ -207,13 +209,12 @@ Content-Type: application/json
 Body:
 ```json
 {
-  "front": "What is a closure in JavaScript?",
-  "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope."
-  // FSRS fields are automatically initialized with default values
+  "front": "What is JavaScript?",
+  "back": "A programming language for the web"
 }
 ```
 
-#### Response
+#### Response (Success)
 
 ```json
 {
@@ -223,24 +224,43 @@ Body:
       "id": "123e4567-e89b-12d3-a456-426614174000",
       "userId": "123e4567-e89b-12d3-a456-426614174001",
       "deckId": "123e4567-e89b-12d3-a456-426614174002",
-      "front": "What is a closure in JavaScript?",
-      "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
+      "front": "What is JavaScript?",
+      "back": "A programming language for the web",
       "state": 0,
       "due": null,
       "stability": 0,
       "difficulty": 0,
-      "elapsed_days": 0,
-      "scheduled_days": 0,
+      "elapsedDays": 0,
+      "scheduledDays": 0,
       "reps": 0,
       "lapses": 0,
-      "last_review": null,
+      "lastReview": null,
       "createdAt": "2023-01-01T00:00:00.000Z",
-      "updatedAt": "2023-01-01T00:00:00.000Z",
-      "deckName": "JavaScript Fundamentals"
+      "updatedAt": "2023-01-01T00:00:00.000Z"
     }
   }
 }
 ```
+
+#### Response (Duplicate Card)
+
+If a similar card already exists in the deck, the API will return a 409 Conflict response:
+
+```json
+{
+  "status": "error",
+  "message": "A similar card already exists in this deck: \"What is JavaScript?\"",
+  "code": "DUPLICATE_CARD"
+}
+```
+
+The duplicate detection is case-insensitive and uses fuzzy matching to catch cards that are very similar but not identical. It checks for:
+
+1. Exact matches (ignoring case)
+2. Matches after removing punctuation and normalizing whitespace
+3. Very similar text using Levenshtein distance (for typos and minor differences)
+
+This helps prevent accidental duplicate cards in your decks.
 
 ### Update a Card
 

@@ -83,14 +83,28 @@ export const cardController = {
       back,
     };
 
-    const card = await cardService.createCard(cardData, deckId, userId);
+    try {
+      const card = await cardService.createCard(cardData, deckId, userId);
 
-    res.status(201).json({
-      status: 'success',
-      data: {
-        card,
-      },
-    });
+      res.status(201).json({
+        status: 'success',
+        data: {
+          card,
+        },
+      });
+    } catch (error: any) {
+      // Check if this is a duplicate card error
+      if (error.message && error.message.includes('A similar card already exists')) {
+        return res.status(409).json({
+          status: 'error',
+          message: error.message,
+          code: 'DUPLICATE_CARD'
+        });
+      }
+      
+      // Re-throw other errors to be handled by the error handler
+      throw error;
+    }
   }),
 
   /**
