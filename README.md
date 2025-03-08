@@ -16,6 +16,7 @@ A RESTful API built with TypeScript, Node.js, Express.js, PostgreSQL, and Supaba
 - Daily review limits for balanced study sessions
 - Detailed review metrics and progress tracking
 - User-specific settings and preferences
+- CSV import for bulk card creation
 
 ## Documentation
 
@@ -28,6 +29,7 @@ Detailed documentation is available in the [docs](./docs) directory:
 - [Cards](./docs/cards.md)
 - [Logs](./docs/logs.md)
 - [User Settings](./docs/user-settings.md)
+- [CSV Import](./docs/imports.md)
 
 ## Project Structure
 
@@ -148,6 +150,11 @@ card-api/
 - `GET /api/settings`: Get user settings
 - `PATCH /api/settings`: Update user settings
 
+### CSV Import
+- `POST /api/imports/preview`: Create an import preview from CSV data
+- `POST /api/imports/confirm`: Confirm and process an import
+- `POST /api/imports/cancel`: Cancel a pending import
+
 ## Key Features
 
 ### Spaced Repetition System
@@ -178,6 +185,21 @@ Users can customize their learning experience through settings:
 - Daily card limits
 - FSRS algorithm parameters
 - Notification preferences
+
+### CSV Import
+
+The API provides a two-step process for importing cards in bulk from CSV data:
+
+1. **Preview Step**: Users submit CSV data and receive a preview of what will be imported, including validation results
+2. **Confirmation Step**: After reviewing the preview, users can confirm or cancel the import
+
+This approach allows users to validate their data before committing to the import, reducing errors and improving the user experience. The CSV import feature supports:
+
+- Required columns: front, back
+- Optional columns: tags, state, due
+- Detailed validation with specific error messages
+- Preview of the first 10 rows
+- Automatic expiration of pending imports after 30 minutes
 
 ## License
 
