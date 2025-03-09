@@ -205,49 +205,53 @@ export const csvService = {
       return text;
     }
     
-    // Check for the specific complex case with multiple quoted sections
-    const complexInput4 = '"""causing or contributing to condition. """"an antibody response"""" serving to explain something or mythical terms. """"the book recounts etiological stories of the creation"""""""';
-    const complexExpected4 = 'causing or contributing to condition. "an antibody response" serving to explain something or mythical terms. "the book recounts etiological stories of the creation"';
-    
-    if (text === complexInput4) {
-      return complexExpected4;
-    }
-    
     // Apply all text processing steps in sequence
     let result = this.convertTripleSpacesToLineBreaks(text);
     
     // Handle dictionary pattern first
     result = this.handleDictionaryPattern(result);
     
+    // Remove leading triple quotes
+    if (result.startsWith('"""')) {
+      result = result.substring(3);
+    }
+    
+    // Handle complex pattern with multiple quoted sections
+    // This pattern matches: text. """"quoted text"""" text. """"quoted text"""""""
+    const complexMultiPattern = /^(.*?)\.\s+"{4}([^"\.]+)"{4}\s+(.*?)\.\s+"{4}([^"\.]+)"{3,}$/;
+    if (complexMultiPattern.test(result)) {
+      result = result.replace(complexMultiPattern, '$1. "$2" $3. "$4"');
+    }
+    
+    // Handle multiple quoted sections with periods in between
+    // This pattern matches: text. """"quoted text"""" more text
+    const multiSectionPattern = /\.\s+"{4}([^"\.]+)"{4}/g;
+    result = result.replace(multiSectionPattern, '. "$1"');
+    
+    // Handle the last quoted section which might have more trailing quotes
+    // This pattern matches: text. """"quoted text""""""
+    const lastSectionPattern = /\.\s+"{4}([^"\.]+)"{3,}$/;
+    if (lastSectionPattern.test(result)) {
+      result = result.replace(lastSectionPattern, '. "$1"');
+    }
+    
     // Special case for the user's specific pattern
     const userPattern = /^"?(.*?)\.\s+""([^"]+)"$/;
     if (userPattern.test(result)) {
-      return result.replace(userPattern, '$1. "$2"');
+      result = result.replace(userPattern, '$1. "$2"');
     }
     
     // Handle dictionary examples pattern
     const dictionaryExamplePattern = /(verb|noun)\s+"([^"]+)\.\s+""([^"]+)"""/;
     if (dictionaryExamplePattern.test(result)) {
-      return result.replace(dictionaryExamplePattern, '$1 $2. "$3"');
+      result = result.replace(dictionaryExamplePattern, '$1 $2. "$3"');
     }
     
     // Handle the complex case with multiple quotes around examples
     // This pattern matches both 'bombastic rhetoric' and 'a cutting rejoinder' cases
-    const complexPattern = /^"{0,3}(.*?)\.\s+"{4}([^"]+)"{3,}$/;
+    const complexPattern = /^"?(.*?)\.\s+"{4}([^"]+)"{3,}$/;
     if (complexPattern.test(result)) {
-      return result.replace(complexPattern, '$1. "$2"');
-    }
-    
-    // Handle the case with multiple quoted sections in the same string
-    if (result.includes('""""') && result.includes('. """"')) {
-      // Remove leading quotes
-      result = result.replace(/^"{3}/, '');
-      
-      // Handle each quoted section
-      result = result.replace(/\.\s+"{4}([^"]+)"{4}/g, '. "$1"');
-      
-      // Handle the last quoted section which might have more trailing quotes
-      result = result.replace(/\.\s+"{4}([^"]+)"{3,}$/, '. "$1"');
+      result = result.replace(complexPattern, '$1. "$2"');
     }
     
     // Handle triple quotes around words
@@ -264,6 +268,9 @@ export const csvService = {
     
     // Handle any remaining triple or more quotes at the end
     result = result.replace(/"{3,}$/, '');
+    
+    // Final check for any remaining doubled quotes
+    result = result.replace(/""/g, '"');
     
     return result;
   },
