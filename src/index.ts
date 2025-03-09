@@ -16,17 +16,7 @@ dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 const app = express();
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-// Public health check endpoint (before any middleware)
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    version: process.env.npm_package_version || '1.0.0'
-  });
-});
-
-// Root route handler
+// Root route handler - simple JSON response
 app.get('/', (req, res) => {
   res.status(200).json({
     message: 'Card API is running',
