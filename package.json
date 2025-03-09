@@ -16,6 +16,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:vercel": "./scripts/quick-test.sh",
+    "test:vercel:local": "npm run build:prod && node test-vercel.js",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "supabase:status": "npx supabase status",
