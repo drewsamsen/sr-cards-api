@@ -2,6 +2,7 @@
   "version": 2,
   "buildCommand": "npm run build:prod",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/api" }
   ]
 } 

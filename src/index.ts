@@ -26,6 +26,17 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Root route handler
+app.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'Card API is running',
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    version: process.env.npm_package_version || '1.0.0'
+  });
+});
+
 // Middleware
 app.use(cors({
   origin: '*', // Allow requests from any origin
