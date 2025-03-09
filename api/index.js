@@ -1,21 +1,26 @@
 // This file serves as the serverless entry point for Vercel
 // It imports the compiled Express application from the dist directory
 
-// First, ensure the TypeScript is compiled
-const { execSync } = require('child_process');
-try {
-  // Only run build in production to avoid unnecessary builds during development
-  if (process.env.NODE_ENV === 'production') {
-    console.log('Building TypeScript...');
-    execSync('npm run build:prod');
-    console.log('TypeScript build complete');
-  }
-} catch (error) {
-  console.error('TypeScript build failed:', error);
-}
-
 // Import the compiled Express app
-const app = require('../dist/index.js');
-
-// Export the Express app for Vercel
-module.exports = app; 
+// Note: The dist directory should be created during the build phase by Vercel
+try {
+  const app = require('../dist/index.js');
+  module.exports = app;
+} catch (error) {
+  // Fallback response if the compiled app can't be loaded
+  console.error('Failed to load compiled app:', error);
+  
+  // Create a minimal Express app as fallback
+  const express = require('express');
+  const app = express();
+  
+  app.get('*', (req, res) => {
+    res.status(500).json({
+      error: 'Server initialization failed',
+      message: 'The application failed to start properly. Please check server logs.',
+      timestamp: new Date().toISOString()
+    });
+  });
+  
+  module.exports = app;
+} 
