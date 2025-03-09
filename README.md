@@ -113,12 +113,65 @@ card-api/
 - `npm run dev`: Start the development server with hot-reloading
 - `npm run build`: Build the project for production
 - `npm start`: Start the production server
+- `npm run start:dev`: Start the server in development mode
+- `npm run start:prod`: Start the server in production mode
+- `npm run build:dev`: Build the project for development
+- `npm run build:prod`: Build the project for production
 - `npm run lint`: Run the linter
 - `npm test`: Run the test suite
 - `npm run supabase:start`: Start the local Supabase instance
 - `npm run supabase:stop`: Stop the local Supabase instance
 - `npm run supabase:status`: Check the status of the local Supabase instance
 - `npm run supabase:studio`: Open the Supabase Studio in your browser
+
+### Environment Configuration
+
+The application supports different environment configurations for development and production:
+
+#### Environment Files
+- `.env.development`: Configuration for local development with local Supabase
+- `.env.production`: Configuration for production deployment with Supabase cloud
+
+#### Setting Up Environment Files
+
+1. Development Environment (`.env.development`):
+   ```
+   PORT=3000
+   NODE_ENV=development
+   
+   # PostgreSQL Connection
+   DB_HOST=localhost
+   DB_PORT=54322
+   DB_USER=postgres
+   DB_PASSWORD=postgres
+   DB_NAME=postgres
+   
+   # Supabase - Local Development
+   SUPABASE_URL=http://127.0.0.1:54321
+   SUPABASE_ANON_KEY=<your-local-anon-key>
+   SUPABASE_SERVICE_KEY=<your-local-service-role-key>
+   ```
+
+2. Production Environment (`.env.production`):
+   ```
+   PORT=3000
+   NODE_ENV=production
+   
+   # Supabase - Production Cloud Instance
+   SUPABASE_URL=<your-supabase-cloud-url>
+   SUPABASE_ANON_KEY=<your-production-anon-key>
+   SUPABASE_SERVICE_KEY=<your-production-service-key>
+   ```
+
+#### Switching Environments
+
+The application automatically loads the appropriate environment file based on the `NODE_ENV` variable:
+- For development: `NODE_ENV=development` (default if not specified)
+- For production: `NODE_ENV=production`
+
+You can use the environment-specific scripts to run the application in different environments:
+- Development: `npm run dev` or `npm run start:dev`
+- Production: `npm run start:prod`
 
 ## API Endpoints
 

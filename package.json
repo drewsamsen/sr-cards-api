@@ -5,8 +5,12 @@
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",
-    "dev": "nodemon --exec ts-node src/index.ts",
+    "start:dev": "NODE_ENV=development node dist/index.js",
+    "start:prod": "NODE_ENV=production node dist/index.js",
+    "dev": "NODE_ENV=development nodemon --exec ts-node src/index.ts",
     "build": "tsc",
+    "build:dev": "NODE_ENV=development tsc",
+    "build:prod": "NODE_ENV=production tsc",
     "lint": "eslint . --ext .ts",
     "test": "jest",
     "test:watch": "jest --watch",
