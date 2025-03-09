@@ -1,30 +1,35 @@
-import { Router } from 'express';
+import express from 'express';
 import authRoutes from './auth.routes';
 import deckRoutes from './deck.routes';
 import cardRoutes from './card.routes';
 import userSettingsRoutes from './user-settings.routes';
 import importRoutes from './import.routes';
 
-const router = Router();
+const router = express.Router();
 
-// Health check route
+// Health check endpoint
 router.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'API is running' });
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    version: process.env.npm_package_version || '1.0.0'
+  });
 });
 
-// Auth routes
+// API routes
 router.use('/auth', authRoutes);
-
-// Deck routes
 router.use('/decks', deckRoutes);
-
-// Card routes
 router.use('/cards', cardRoutes);
-
-// User settings routes
 router.use('/user-settings', userSettingsRoutes);
-
-// Import routes
 router.use('/imports', importRoutes);
+
+// Root API endpoint
+router.get('/', (req, res) => {
+  res.status(200).json({
+    message: 'Card API is running',
+    documentation: '/api/health'
+  });
+});
 
 export { router }; 

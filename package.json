@@ -15,16 +15,13 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:vercel": "./scripts/quick-test.sh",
     "supabase:start": "npx supabase start",
     "supabase:stop": "npx supabase stop",
     "supabase:status": "npx supabase status",
     "supabase:studio": "open http://127.0.0.1:54323",
     "setup": "node scripts/setup-dev.js",
-    "seed:data": "node scripts/seed-data.js",
-    "create:user": "node scripts/create-test-user.js",
-    "create:decks": "node scripts/create-sample-decks.js",
-    "test:login": "node scripts/login-test-user.js",
-    "seed:users": "node scripts/seed-users.js"
+    "seed:data": "node scripts/seed-data.js"
   },
   "keywords": [],
   "author": "",
