@@ -19,6 +19,30 @@ describe('CSV Service - Text Processing', () => {
       expect(csvService.processTextContent(input2)).toBe(expected2);
     });
 
+    it('should handle quotes at the end of text', () => {
+      const input = 'some text here blah test. ""a part of the text in quotes"';
+      const expected = 'some text here blah test. "a part of the text in quotes"';
+      expect(csvService.processTextContent(input)).toBe(expected);
+      
+      // More complex cases
+      const input2 = 'Text with ""quoted content"" and more ""quoted content at the end""';
+      const expected2 = 'Text with "quoted content" and more "quoted content at the end"';
+      expect(csvService.processTextContent(input2)).toBe(expected2);
+      
+      const input3 = 'Text ending with a quote and some content ""like this"';
+      const expected3 = 'Text ending with a quote and some content "like this"';
+      expect(csvService.processTextContent(input3)).toBe(expected3);
+      
+      const input4 = 'Text with """triple quotes at the end"""';
+      const expected4 = 'Text with "triple quotes at the end"';
+      expect(csvService.processTextContent(input4)).toBe(expected4);
+      
+      // Exact match for the user's example
+      const userExample = '"some text here blah test. ""a part of the text in quotes"';
+      const userExpected = 'some text here blah test. "a part of the text in quotes"';
+      expect(csvService.processTextContent(userExample)).toBe(userExpected);
+    });
+
     it('should handle real-world examples from dictionary imports', () => {
       const examples = [
         {
@@ -38,6 +62,47 @@ describe('CSV Service - Text Processing', () => {
       examples.forEach(example => {
         expect(csvService.processTextContent(example.input)).toBe(example.expected);
       });
+    });
+
+    it('should handle the user\'s specific example', () => {
+      // The exact example from the user
+      const input = '"some text here blah test. ""a part of the text in quotes"';
+      const expected = 'some text here blah test. "a part of the text in quotes"';
+      expect(csvService.processTextContent(input)).toBe(expected);
+      
+      // New example with inner quotes
+      const innerQuoteInput = '"some text ""some inner quote" some end"';
+      const innerQuoteExpected = 'some text "some inner quote" some end';
+      expect(csvService.processTextContent(innerQuoteInput)).toBe(innerQuoteExpected);
+      
+      // More complex examples with inner quotes
+      const complexInput1 = '"text with ""multiple"" ""inner quotes"" in different places"';
+      const complexExpected1 = 'text with "multiple" "inner quotes" in different places';
+      expect(csvService.processTextContent(complexInput1)).toBe(complexExpected1);
+      
+      const complexInput2 = '"text with ""inner quote at the end"""';
+      const complexExpected2 = 'text with "inner quote at the end"';
+      expect(csvService.processTextContent(complexInput2)).toBe(complexExpected2);
+      
+      const complexInput3 = '"text with """triple inner quotes""" and ""double inner quotes"""';
+      const complexExpected3 = 'text with "triple inner quotes" and "double inner quotes"';
+      expect(csvService.processTextContent(complexInput3)).toBe(complexExpected3);
+
+      const complexInput4 = '"""causing or contributing to condition. """"an antibody response"""" serving to explain something or mythical terms. """"the book recounts etiological stories of the creation"""""""';
+      const complexExpected4 = 'causing or contributing to condition. "an antibody response" serving to explain something or mythical terms. "the book recounts etiological stories of the creation"';
+      expect(csvService.processTextContent(complexInput4)).toBe(complexExpected4);
+    });
+
+    it('should handle complex quote patterns', () => {
+      // Test case with multiple quotes around 'bombastic rhetoric'
+      const input = '"""adjective high-sounding but with little meaning; inflated. """"bombastic rhetoric"""""""';
+      const expected = 'adjective high-sounding but with little meaning; inflated. "bombastic rhetoric"';
+      expect(csvService.processTextContent(input)).toBe(expected);
+      
+      // Test case with multiple quotes around 'a cutting rejoinder'
+      const input2 = '"""a reply, esp a sharp or witty one. """"a cutting rejoinder"""""""';
+      const expected2 = 'a reply, esp a sharp or witty one. "a cutting rejoinder"';
+      expect(csvService.processTextContent(input2)).toBe(expected2);
     });
   });
 
