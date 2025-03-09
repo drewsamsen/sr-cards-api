@@ -44,9 +44,14 @@ app.use('/api', router);
 // Error handling middleware
 app.use(errorHandler);
 
-// Start the server
-app.listen(port, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${port}`);
-});
+// Only start the server if we're not in a serverless environment
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`Server running in ${process.env.NODE_ENV} mode on port ${port} and accessible from other devices on the network`);
+  });
+}
 
+// Export the Express app for serverless environments
 export default app;
+// Add CommonJS export for compatibility
+module.exports = app;
