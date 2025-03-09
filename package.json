@@ -11,6 +11,7 @@
     "build": "NODE_ENV=production tsc -p tsconfig.build.json",
     "build:dev": "NODE_ENV=development tsc -p tsconfig.build.json",
     "build:prod": "NODE_ENV=production tsc -p tsconfig.build.json",
+    "build:vercel": "NODE_ENV=production node scripts/build-vercel.js",
     "lint": "eslint . --ext .ts",
     "test": "jest",
     "test:watch": "jest --watch",
