@@ -9,7 +9,7 @@ dotenv.config();
 
 // Create Express app
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Middleware
 app.use(cors());
@@ -25,6 +25,6 @@ app.use('/api', router);
 app.use(errorHandler);
 
 // Start server
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server running on port ${port} and accessible from other devices on the network`);
 }); 
