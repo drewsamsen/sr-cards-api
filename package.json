@@ -35,7 +35,8 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "pg": "^8.13.3",
-    "ts-fsrs": "^4.6.1"
+    "ts-fsrs": "^4.6.1",
+    "typescript": "^5.8.2"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",
@@ -47,7 +48,6 @@
     "nodemon": "^3.1.9",
     "supabase": "^2.15.8",
     "ts-jest": "^29.2.6",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "ts-node": "^10.9.2"
   }
 }
