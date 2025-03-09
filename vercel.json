@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "dist/index.js",
+      "src": "package.json",
       "use": "@vercel/node"
     }
   ],
@@ -12,5 +12,6 @@
       "dest": "dist/index.js"
     }
   ],
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "buildCommand": "./vercel.sh"
 } 
