@@ -169,10 +169,7 @@ export const importService = {
         user_id: userId,
         deck_id: importRecord.deckId,
         front: card.front,
-        back: card.back,
-        tags: card.tags || [],
-        state: card.state || 0,
-        due: card.due || null
+        back: card.back
       }));
       
       // Track success and failure counts
