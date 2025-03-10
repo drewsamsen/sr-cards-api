@@ -151,19 +151,20 @@ export const importService = {
       }
 
       // Get the parsed data and summary from the import record
+      // Note: parsedData is already deduplicated from internal duplicates during preview
       const { parsedData, summary } = importRecord;
       
-      // Check for duplicates in bulk against the database
-      const { cards: cardsWithDuplicateStatus, duplicateCount, duplicateDetails } = 
-        await csvService.checkForDuplicates(parsedData, importRecord.deckId, userId);
-      
-      // Filter out duplicates
-      const validCards = parsedData.filter((card: any, index: number) => {
-        const cardWithStatus = cardsWithDuplicateStatus[index];
-        return cardWithStatus.status === 'valid';
+      // Filter out cards that were already identified as duplicates during preview
+      // This eliminates the need to check for duplicates again
+      const validCards = parsedData.filter((card: any) => {
+        // If the card was marked as a duplicate in the preview, skip it
+        const isDuplicate = summary.duplicateDetails?.some(
+          (detail) => detail.cardFront === card.front
+        );
+        return !isDuplicate;
       });
       
-      // Prepare cards for bulk insert
+      // Prepare cards for a single bulk insert
       const cardsToInsert = validCards.map((card: any) => ({
         user_id: userId,
         deck_id: importRecord.deckId,
@@ -182,41 +183,21 @@ export const importService = {
       // If there are cards to insert, do a bulk insert
       if (cardsToInsert.length > 0) {
         try {
-          // Split into chunks of 10 cards to avoid hitting database limits
-          const chunkSize = 10;
-          for (let i = 0; i < cardsToInsert.length; i += chunkSize) {
-            const chunk = cardsToInsert.slice(i, i + chunkSize);
-            
-            const { data, error } = await supabaseAdmin
-              .from('cards')
-              .insert(chunk)
-              .select();
-            
-            if (error) {
-              // If bulk insert fails, try individual inserts as fallback
-              console.error('Bulk insert failed, falling back to individual inserts:', error);
-              
-              // Process each card in the chunk individually
-              for (let j = 0; j < chunk.length; j++) {
-                const cardIndex = i + j;
-                try {
-                  await cardService.createCard({
-                    front: validCards[cardIndex].front,
-                    back: validCards[cardIndex].back
-                  }, importRecord.deckId, userId);
-                  successCount++;
-                } catch (cardError: any) {
-                  failureCount++;
-                  errors.push({
-                    row: cardIndex + 2, // +2 because index is 0-based and we skip the header row
-                    message: cardError.message
-                  });
-                }
-              }
-            } else {
-              // Bulk insert succeeded
-              successCount += data.length;
-            }
+          // Perform a single bulk insert operation for all cards
+          const { data, error } = await supabaseAdmin
+            .from('cards')
+            .insert(cardsToInsert)
+            .select('id');
+          
+          if (error) {
+            console.error('Bulk insert failed:', error);
+            failureCount = cardsToInsert.length;
+            errors.push({
+              message: `Bulk insert failed: ${error.message}`
+            });
+          } else {
+            // Bulk insert succeeded
+            successCount = data.length;
           }
         } catch (bulkError: any) {
           console.error('Error during bulk insert:', bulkError);
@@ -232,8 +213,6 @@ export const importService = {
         ...summary,
         validRows: successCount,
         invalidRows: failureCount,
-        duplicateCards: duplicateCount,
-        duplicateDetails: duplicateDetails.length > 0 ? duplicateDetails : undefined,
         errors: errors.length > 0 ? errors : undefined
       };
 
