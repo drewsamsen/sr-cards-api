@@ -17,11 +17,24 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn(`Supabase URL or keys are missing for ${process.env.NODE_ENV} environment. Auth functionality will not work properly.`);
 }
 
+// Define Supabase client options with enhanced session persistence
+// These options help maintain longer authentication sessions in serverless environments
+// - autoRefreshToken: Automatically refreshes the token before it expires
+// - persistSession: Ensures the session is persisted across requests
+// - detectSessionInUrl: Disables automatic detection of auth parameters in the URL
+const supabaseOptions = {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false
+  }
+};
+
 // Create a Supabase client with the anonymous key (for client-side operations)
-const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseAnon = createClient(supabaseUrl, supabaseAnonKey, supabaseOptions);
 
 // Create a Supabase client with the service role key (for server-side operations)
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, supabaseOptions);
 
 export { supabaseAnon, supabaseAdmin };
 export default supabaseAnon; 
