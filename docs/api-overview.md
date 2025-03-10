@@ -139,7 +139,7 @@ The API does not currently implement versioning. Future versions may be accessed
 - `GET /api/decks`: Get all decks for the current user
 - `GET /api/decks/:id`: Get a specific deck by ID
 - `GET /api/decks/slug/:slug`: Get a specific deck by slug
-- `GET /api/decks/slug/:slug/review`: Get a random card that is either new or due for review from a deck
+- `GET /api/decks/slug/:slug/review`: Get all cards that are either new or due for review from a deck
 - `POST /api/decks`: Create a new deck
 - `PATCH /api/decks/:id`: Update a deck
 - `DELETE /api/decks/:id`: Delete a deck

@@ -1,3 +1,5 @@
+import { ReviewMetrics } from '../services/fsrs.service';
+
 // Database model (matches PostgreSQL snake_case)
 export interface CardDB {
   id: string;
@@ -40,6 +42,7 @@ export interface Card {
   updatedAt: string;
   deckName?: string; // Optional field from join with decks table
   deckSlug?: string; // Optional field from join with decks table
+  reviewMetrics?: ReviewMetrics; // Optional review metrics calculated for this card
 }
 
 // Request DTOs (uses JavaScript camelCase convention)

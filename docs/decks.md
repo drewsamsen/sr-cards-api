@@ -96,7 +96,7 @@ The following indexes are created for better performance:
 - `GET /api/decks`: Get all decks for the current user
 - `GET /api/decks/:id`: Get a specific deck by ID
 - `GET /api/decks/slug/:slug`: Get a specific deck by slug
-- `GET /api/decks/slug/:slug/review`: Get a random card from a deck for review with additional metrics
+- `GET /api/decks/slug/:slug/review`: Get all cards from a deck for review with additional metrics
 - `POST /api/decks`: Create a new deck
 - `PATCH /api/decks/:id`: Update a deck
 - `DELETE /api/decks/:id`: Delete a deck
@@ -202,9 +202,14 @@ Authorization: Bearer <jwt-token>
 }
 ```
 
-### Get Random Card for Review
+### Get Cards for Review
 
-This endpoint retrieves a random card from a deck that is either new (state=0) or due for review (due date in the past). It respects the user's daily limits for new cards and reviews per deck.
+This endpoint retrieves cards from a deck that are either new (state=0) or due for review (due date in the past). It strictly respects the user's daily limits for new cards and reviews per deck.
+
+For example, if a user has set their daily limits to 5 new cards and 10 review cards:
+- If they've already reviewed 3 new cards and 4 review cards today, the endpoint will return at most 2 new cards and 6 review cards (8 total)
+- If they've reached their daily limit for new cards but not for review cards, the endpoint will only return review cards
+- If they've reached both limits, the endpoint will return an "all caught up" response
 
 **Request:**
 ```http
@@ -212,7 +217,7 @@ GET /api/decks/slug/javascript-basics/review
 Authorization: Bearer <jwt-token>
 ```
 
-**Response (Card Available):**
+**Response (Cards Available):**
 ```json
 {
   "status": "success",
@@ -226,32 +231,60 @@ Authorization: Bearer <jwt-token>
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-04T12:00:00Z"
     },
-    "card": {
-      "id": "card-uuid-1",
-      "userId": "user-uuid",
-      "deckId": "uuid-1",
-      "front": "What is a closure in JavaScript?",
-      "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
-      "state": 0,
-      "due": null,
-      "stability": 0,
-      "difficulty": 0,
-      "elapsedDays": 0,
-      "scheduledDays": 0,
-      "reps": 0,
-      "lapses": 0,
-      "lastReview": null,
-      "createdAt": "2023-03-04T12:30:00Z",
-      "updatedAt": "2023-03-04T12:30:00Z",
-      "deckName": "JavaScript Basics",
-      "deckSlug": "javascript-basics"
-    },
-    "reviewMetrics": {
-      "again": "2023-03-05T12:30:00Z",
-      "hard": "2023-03-07T12:30:00Z",
-      "good": "2023-03-11T12:30:00Z",
-      "easy": "2023-03-18T12:30:00Z"
-    },
+    "cards": [
+      {
+        "id": "card-uuid-1",
+        "userId": "user-uuid",
+        "deckId": "uuid-1",
+        "front": "What is a closure in JavaScript?",
+        "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
+        "state": 0,
+        "due": null,
+        "stability": 0,
+        "difficulty": 0,
+        "elapsedDays": 0,
+        "scheduledDays": 0,
+        "reps": 0,
+        "lapses": 0,
+        "lastReview": null,
+        "createdAt": "2023-03-04T12:30:00Z",
+        "updatedAt": "2023-03-04T12:30:00Z",
+        "deckName": "JavaScript Basics",
+        "deckSlug": "javascript-basics",
+        "reviewMetrics": {
+          "again": "2023-03-05T12:30:00Z",
+          "hard": "2023-03-07T12:30:00Z",
+          "good": "2023-03-11T12:30:00Z",
+          "easy": "2023-03-18T12:30:00Z"
+        }
+      },
+      {
+        "id": "card-uuid-2",
+        "userId": "user-uuid",
+        "deckId": "uuid-1",
+        "front": "What is hoisting in JavaScript?",
+        "back": "Hoisting is JavaScript's default behavior of moving declarations to the top of the current scope.",
+        "state": 1,
+        "due": "2023-03-05T12:30:00Z",
+        "stability": 2.5,
+        "difficulty": 0.3,
+        "elapsedDays": 1,
+        "scheduledDays": 1,
+        "reps": 1,
+        "lapses": 0,
+        "lastReview": "2023-03-04T12:30:00Z",
+        "createdAt": "2023-03-03T12:30:00Z",
+        "updatedAt": "2023-03-04T12:30:00Z",
+        "deckName": "JavaScript Basics",
+        "deckSlug": "javascript-basics",
+        "reviewMetrics": {
+          "again": "2023-03-06T12:30:00Z",
+          "hard": "2023-03-08T12:30:00Z",
+          "good": "2023-03-12T12:30:00Z",
+          "easy": "2023-03-19T12:30:00Z"
+        }
+      }
+    ],
     "dailyProgress": {
       "newCardsSeen": 3,
       "newCardsLimit": 5,
@@ -277,6 +310,7 @@ Authorization: Bearer <jwt-token>
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-04T12:00:00Z"
     },
+    "cards": [],
     "allCaughtUp": true,
     "message": "Great job! You've completed all your reviews for now. Check back later for more.",
     "totalCards": 25,
@@ -290,12 +324,6 @@ Authorization: Bearer <jwt-token>
   }
 }
 ```
-
-> **Note**: This response is returned in two scenarios:
-> 1. When the user has reached their daily review limits
-> 2. When all cards in the deck are caught up (none due for review)
-> 
-> From the user's perspective, both scenarios represent the same outcome: they've completed all available reviews for now.
 
 **Response (Empty Deck):**
 ```json
@@ -311,6 +339,7 @@ Authorization: Bearer <jwt-token>
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-04T12:00:00Z"
     },
+    "cards": [],
     "emptyDeck": true,
     "message": "This deck doesn't have any cards yet. Add some cards to start reviewing!",
     "dailyProgress": {
@@ -324,13 +353,6 @@ Authorization: Bearer <jwt-token>
 }
 ```
 
-The `reviewMetrics` object provides predicted due dates for the card based on different review ratings:
-
-- `again`: When the card should be reviewed if rated "Again" (typically the next day)
-- `hard`: When the card should be reviewed if rated "Hard" (typically a few days later)
-- `good`: When the card should be reviewed if rated "Good" (typically a week later)
-- `easy`: When the card should be reviewed if rated "Easy" (typically two weeks later)
-
 The `dailyProgress` object provides information about the user's progress toward their daily limits:
 
 - `newCardsSeen`: Number of new cards reviewed in the last 24 hours
@@ -338,6 +360,13 @@ The `dailyProgress` object provides information about the user's progress toward
 - `reviewCardsSeen`: Number of review cards reviewed in the last 24 hours
 - `reviewCardsLimit`: Maximum number of review cards allowed per day (from user settings)
 - `totalRemaining`: Total number of cards remaining before reaching daily limits
+
+The response also includes `reviewMetrics` for each card in the array, which provides predicted due dates based on different review ratings:
+
+- `again`: When the card should be reviewed if rated "Again" (typically the next day)
+- `hard`: When the card should be reviewed if rated "Hard" (typically a few days later)
+- `good`: When the card should be reviewed if rated "Good" (typically a week later)
+- `easy`: When the card should be reviewed if rated "Easy" (typically two weeks later)
 
 ### Create a Deck
 

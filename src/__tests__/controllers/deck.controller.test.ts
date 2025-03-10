@@ -46,20 +46,19 @@ describe('Deck Controller', () => {
         id: 'card-1',
         front: 'Test front',
         back: 'Test back',
-        state: 0
+        state: 0,
+        reviewMetrics: {
+          again: '2023-03-05T12:30:00Z',
+          hard: '2023-03-07T12:30:00Z',
+          good: '2023-03-11T12:30:00Z',
+          easy: '2023-03-18T12:30:00Z'
+        }
       };
       
       const mockDeck = {
         id: 'deck-1',
         name: 'Test Deck',
         slug: 'test-deck'
-      };
-      
-      const mockReviewMetrics = {
-        again: '2023-03-05T12:30:00Z',
-        hard: '2023-03-07T12:30:00Z',
-        good: '2023-03-11T12:30:00Z',
-        easy: '2023-03-18T12:30:00Z'
       };
       
       const mockDailyProgress = {
@@ -70,10 +69,9 @@ describe('Deck Controller', () => {
         totalRemaining: 9
       };
       
-      (deckService.getRandomCardForReview as jest.Mock).mockResolvedValue({
+      (deckService.getAllCardsForReview as jest.Mock).mockResolvedValue({
         deck: mockDeck,
-        card: mockCard,
-        reviewMetrics: mockReviewMetrics,
+        cards: [mockCard],
         dailyProgress: mockDailyProgress
       });
       
@@ -85,7 +83,7 @@ describe('Deck Controller', () => {
       );
       
       // Assertions
-      expect(deckService.getRandomCardForReview).toHaveBeenCalledWith(
+      expect(deckService.getAllCardsForReview).toHaveBeenCalledWith(
         'test-deck',
         'test-user-id'
       );
@@ -95,8 +93,7 @@ describe('Deck Controller', () => {
         status: 'success',
         data: {
           deck: mockDeck,
-          card: mockCard,
-          reviewMetrics: mockReviewMetrics,
+          cards: [mockCard],
           dailyProgress: mockDailyProgress
         }
       });
@@ -125,7 +122,7 @@ describe('Deck Controller', () => {
           name: 'daily limit reached',
           serviceResponse: {
             deck: mockDeck,
-            card: null,
+            cards: [],
             dailyLimitReached: true,
             message: "You've reached your daily review limits for this deck.",
             dailyProgress: mockDailyProgress,
@@ -136,7 +133,7 @@ describe('Deck Controller', () => {
           name: 'all caught up',
           serviceResponse: {
             deck: mockDeck,
-            card: null,
+            cards: [],
             allCaughtUp: true,
             totalCards: 25,
             dailyProgress: mockDailyProgress
@@ -149,7 +146,7 @@ describe('Deck Controller', () => {
         jest.clearAllMocks();
         responseObject = {};
         
-        (deckService.getRandomCardForReview as jest.Mock).mockResolvedValue(
+        (deckService.getAllCardsForReview as jest.Mock).mockResolvedValue(
           testCase.serviceResponse
         );
         
@@ -161,7 +158,7 @@ describe('Deck Controller', () => {
         );
         
         // Assertions
-        expect(deckService.getRandomCardForReview).toHaveBeenCalledWith(
+        expect(deckService.getAllCardsForReview).toHaveBeenCalledWith(
           'test-deck',
           'test-user-id'
         );
@@ -171,7 +168,7 @@ describe('Deck Controller', () => {
           status: 'success',
           data: {
             deck: mockDeck,
-            card: null,
+            cards: [],
             allCaughtUp: true,
             message: "Great job! You've completed all your reviews for now. Check back later for more.",
             totalCards: 25,
@@ -197,9 +194,9 @@ describe('Deck Controller', () => {
         totalRemaining: 20
       };
       
-      (deckService.getRandomCardForReview as jest.Mock).mockResolvedValue({
+      (deckService.getAllCardsForReview as jest.Mock).mockResolvedValue({
         deck: mockDeck,
-        card: null,
+        cards: [],
         emptyDeck: true,
         dailyProgress: mockDailyProgress
       });
@@ -212,7 +209,7 @@ describe('Deck Controller', () => {
       );
       
       // Assertions
-      expect(deckService.getRandomCardForReview).toHaveBeenCalledWith(
+      expect(deckService.getAllCardsForReview).toHaveBeenCalledWith(
         'test-deck',
         'test-user-id'
       );
@@ -222,7 +219,7 @@ describe('Deck Controller', () => {
         status: 'success',
         data: {
           deck: mockDeck,
-          card: null,
+          cards: [],
           emptyDeck: true,
           message: "This deck doesn't have any cards yet. Add some cards to start reviewing!",
           dailyProgress: mockDailyProgress
@@ -232,9 +229,9 @@ describe('Deck Controller', () => {
     
     test('should return 404 when deck is not found', async () => {
       // Mock the service to return null deck
-      (deckService.getRandomCardForReview as jest.Mock).mockResolvedValue({
+      (deckService.getAllCardsForReview as jest.Mock).mockResolvedValue({
         deck: null,
-        card: null
+        cards: []
       });
       
       // Call the controller method
@@ -245,7 +242,7 @@ describe('Deck Controller', () => {
       );
       
       // Assertions
-      expect(deckService.getRandomCardForReview).toHaveBeenCalledWith(
+      expect(deckService.getAllCardsForReview).toHaveBeenCalledWith(
         'test-deck',
         'test-user-id'
       );
@@ -281,7 +278,7 @@ describe('Deck Controller', () => {
     
     test('should handle errors gracefully', async () => {
       // Mock the service to throw an error
-      (deckService.getRandomCardForReview as jest.Mock).mockRejectedValue(
+      (deckService.getAllCardsForReview as jest.Mock).mockRejectedValue(
         new Error('Test error')
       );
       
@@ -296,7 +293,81 @@ describe('Deck Controller', () => {
       expect(mockResponse.status).toHaveBeenCalledWith(500);
       expect(responseObject).toEqual({
         status: 'error',
-        message: 'An error occurred while fetching a card for review'
+        message: 'An error occurred while fetching cards for review'
+      });
+    });
+    
+    test('should return cards respecting daily limits', async () => {
+      // Mock the service to return cards respecting daily limits
+      const mockCards = [
+        {
+          id: 'card-1',
+          front: 'New card 1',
+          back: 'Back 1',
+          state: 0,
+          reviewMetrics: {
+            again: '2023-03-05T12:30:00Z',
+            hard: '2023-03-07T12:30:00Z',
+            good: '2023-03-11T12:30:00Z',
+            easy: '2023-03-18T12:30:00Z'
+          }
+        },
+        {
+          id: 'card-2',
+          front: 'Review card 1',
+          back: 'Back 2',
+          state: 1,
+          due: '2023-03-05T12:30:00Z',
+          reviewMetrics: {
+            again: '2023-03-06T12:30:00Z',
+            hard: '2023-03-08T12:30:00Z',
+            good: '2023-03-12T12:30:00Z',
+            easy: '2023-03-19T12:30:00Z'
+          }
+        }
+      ];
+      
+      const mockDeck = {
+        id: 'deck-1',
+        name: 'Test Deck',
+        slug: 'test-deck'
+      };
+      
+      const mockDailyProgress = {
+        newCardsSeen: 3,
+        newCardsLimit: 5,
+        reviewCardsSeen: 4,
+        reviewCardsLimit: 10,
+        totalRemaining: 8 // 2 new cards + 6 review cards
+      };
+      
+      (deckService.getAllCardsForReview as jest.Mock).mockResolvedValue({
+        deck: mockDeck,
+        cards: mockCards,
+        dailyProgress: mockDailyProgress
+      });
+      
+      // Call the controller method
+      await deckController.getDeckReview(
+        mockRequest as AuthenticatedRequest,
+        mockResponse as Response,
+        jest.fn() // Next function
+      );
+      
+      // Assertions
+      expect(deckService.getAllCardsForReview).toHaveBeenCalledWith(
+        'test-deck',
+        'test-user-id'
+      );
+      
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(responseObject).toEqual({
+        status: 'success',
+        data: {
+          deck: mockDeck,
+          cards: mockCards,
+          dailyProgress: mockDailyProgress
+        }
       });
     });
   });

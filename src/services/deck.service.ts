@@ -11,8 +11,7 @@ import { DailyProgressResponse } from '../models/daily-progress.model';
 // Define a type for the review result
 interface ReviewResult {
   deck: Deck | null;
-  card: Card | null;
-  reviewMetrics?: ReviewMetrics;
+  cards: Card[];
   allCaughtUp?: boolean;
   totalCards?: number;
   emptyDeck?: boolean;
@@ -221,13 +220,13 @@ export const deckService = {
   },
 
   /**
-   * Get a random card from a deck for review
+   * Get all cards available for review from a deck, respecting daily limits
    */
-  async getRandomCardForReview(slug: string, userId: string): Promise<ReviewResult> {
+  async getAllCardsForReview(slug: string, userId: string): Promise<ReviewResult> {
     const deck = await this.getDeckBySlug(slug, userId);
     
     if (!deck) {
-      return { deck: null, card: null };
+      return { deck: null, cards: [] };
     }
     
     // Get user settings to check daily limits
@@ -265,47 +264,67 @@ export const deckService = {
     if (totalRemaining === 0) {
       return {
         deck,
-        card: null,
+        cards: [],
         dailyProgress,
         dailyLimitReached: true,
         message: "You've reached your daily review limit for this deck. Great work!"
       };
     }
     
-    // Determine what types of cards to show
-    const canShowNewCards = newCardsRemaining > 0;
-    const canShowReviewCards = reviewCardsRemaining > 0;
-    
     // Get current date for comparison
     const now = new Date().toISOString();
     
-    // Build the filter based on what types of cards we can show
-    let filter = '';
-    if (canShowNewCards && canShowReviewCards) {
-      filter = `state.eq.0,and(state.in.(1,2,3),due.lte.${now})`;
-    } else if (canShowNewCards) {
-      filter = 'state.eq.0';
-    } else if (canShowReviewCards) {
-      filter = `and(state.in.(1,2,3),due.lte.${now})`;
+    // First, get all new cards (state=0)
+    let newCards = [];
+    if (newCardsRemaining > 0) {
+      const { data: newCardsData, error: newCardsError } = await supabaseAdmin
+        .from('cards')
+        .select(`
+          *,
+          decks:deck_id (
+            name,
+            slug
+          )
+        `)
+        .eq('deck_id', deck.id)
+        .eq('user_id', userId)
+        .eq('state', 0)
+        .limit(newCardsRemaining);
+        
+      if (newCardsError) {
+        throw newCardsError;
+      }
+      
+      newCards = newCardsData || [];
     }
     
-    // Get cards that match our filter
-    const { data, error } = await supabaseAdmin
-      .from('cards')
-      .select(`
-        *,
-        decks:deck_id (
-          name,
-          slug
-        )
-      `)
-      .eq('deck_id', deck.id)
-      .eq('user_id', userId)
-      .or(filter);
+    // Then, get all review cards (state > 0 and due <= now)
+    let reviewCards = [];
+    if (reviewCardsRemaining > 0) {
+      const { data: reviewCardsData, error: reviewCardsError } = await supabaseAdmin
+        .from('cards')
+        .select(`
+          *,
+          decks:deck_id (
+            name,
+            slug
+          )
+        `)
+        .eq('deck_id', deck.id)
+        .eq('user_id', userId)
+        .gt('state', 0)
+        .lte('due', now)
+        .limit(reviewCardsRemaining);
+        
+      if (reviewCardsError) {
+        throw reviewCardsError;
+      }
       
-    if (error) {
-      throw error;
+      reviewCards = reviewCardsData || [];
     }
+    
+    // Combine new cards and review cards
+    const data = [...newCards, ...reviewCards];
     
     // Check if there are no cards ready for review
     if (!data || data.length === 0) {
@@ -324,7 +343,7 @@ export const deckService = {
       if (count && count > 0) {
         return { 
           deck, 
-          card: null, 
+          cards: [],
           allCaughtUp: true,
           totalCards: count,
           dailyProgress
@@ -334,35 +353,50 @@ export const deckService = {
       // If there are no cards at all
       return { 
         deck, 
-        card: null,
+        cards: [],
         emptyDeck: true,
         dailyProgress
       };
     }
     
-    // Select a random card from the filtered results
-    const randomIndex = Math.floor(Math.random() * data.length);
-    const randomCard = data[randomIndex];
+    // Process all cards with deck info and calculate review metrics for each card
+    const cardsWithDeckInfoPromises = data.map(async (card) => {
+      const cardWithDeckInfo = {
+        ...card,
+        deck_name: card.decks?.name,
+        deck_slug: card.decks?.slug
+      };
+      
+      // Remove the nested decks object before converting
+      delete cardWithDeckInfo.decks;
+      
+      // Calculate review metrics for this card
+      const reviewMetrics = await fsrsService.calculateReviewMetrics(card, userId);
+      
+      // Convert to camelCase and add review metrics
+      const camelCaseCard = snakeToCamelObject(cardWithDeckInfo) as Card;
+      return {
+        ...camelCaseCard,
+        reviewMetrics
+      };
+    });
     
-    // Add deck name and slug and convert to camelCase
-    const cardWithDeckInfo = {
-      ...randomCard,
-      deck_name: randomCard.decks?.name,
-      deck_slug: randomCard.decks?.slug
-    };
-    
-    // Remove the nested decks object before converting
-    delete cardWithDeckInfo.decks;
-    
-    // Calculate review metrics using the FSRS service with user-specific parameters
-    const reviewMetrics = await fsrsService.calculateReviewMetrics(randomCard, userId);
+    // Wait for all promises to resolve
+    const cardsWithDeckInfo = await Promise.all(cardsWithDeckInfoPromises);
     
     return { 
       deck, 
-      card: snakeToCamelObject(cardWithDeckInfo) as Card,
-      reviewMetrics,
+      cards: cardsWithDeckInfo,
       dailyProgress
     };
+  },
+
+  /**
+   * Get a random card from a deck for review
+   * @deprecated Use getAllCardsForReview instead
+   */
+  async getRandomCardForReview(slug: string, userId: string): Promise<ReviewResult> {
+    return this.getAllCardsForReview(slug, userId);
   },
 
   /**

@@ -157,7 +157,7 @@ export const deckController = {
   }),
 
   /**
-   * Get a random card from a deck for review
+   * Get all cards from a deck available for review
    */
   getDeckReview: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -173,7 +173,7 @@ export const deckController = {
         return;
       }
 
-      const result = await deckService.getRandomCardForReview(slug, userId);
+      const result = await deckService.getAllCardsForReview(slug, userId);
 
       if (!result.deck) {
         res.status(404).json({
@@ -189,7 +189,7 @@ export const deckController = {
           status: 'success',
           data: {
             deck: result.deck,
-            card: null,
+            cards: [],
             allCaughtUp: true,
             message: "Great job! You've completed all your reviews for now. Check back later for more.",
             totalCards: result.totalCards,
@@ -205,7 +205,7 @@ export const deckController = {
           status: 'success',
           data: {
             deck: result.deck,
-            card: null,
+            cards: [],
             emptyDeck: true,
             message: "This deck doesn't have any cards yet. Add some cards to start reviewing!",
             dailyProgress: result.dailyProgress
@@ -215,12 +215,12 @@ export const deckController = {
       }
       
       // Default case for no cards available (should rarely happen with the above checks)
-      if (!result.card) {
+      if (!result.cards || result.cards.length === 0) {
         res.status(200).json({
           status: 'success',
           data: {
             deck: result.deck,
-            card: null,
+            cards: [],
             message: 'No cards available for review',
             dailyProgress: result.dailyProgress
           }
@@ -232,20 +232,19 @@ export const deckController = {
         status: 'success',
         data: {
           deck: result.deck,
-          card: result.card,
-          reviewMetrics: result.reviewMetrics,
+          cards: result.cards,
           dailyProgress: result.dailyProgress
         }
       });
     } catch (error) {
-      console.error('[ERROR] Error in getRandomCardForReview controller:', {
+      console.error('[ERROR] Error in getAllCardsForReview controller:', {
         error,
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : ''
       });
       res.status(500).json({
         status: 'error',
-        message: 'An error occurred while fetching a card for review'
+        message: 'An error occurred while fetching cards for review'
       });
     }
   }),
