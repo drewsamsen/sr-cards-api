@@ -25,6 +25,9 @@ export const deckService = {
    * Get all decks for a user
    */
   async getAllDecks(userId: string): Promise<Deck[]> {
+    console.time('getAllDecks');
+    
+    // Fetch all decks in a single query
     const { data, error } = await supabaseAdmin
       .from('decks')
       .select('*')
@@ -32,25 +35,65 @@ export const deckService = {
       .order('created_at', { ascending: false });
 
     if (error) {
+      console.timeEnd('getAllDecks');
       throw error;
     }
 
     if (!data || data.length === 0) {
+      console.timeEnd('getAllDecks');
       return [];
     }
 
     // Convert snake_case DB results to camelCase for API
     const decks = data.map(deck => snakeToCamelObject(deck) as Deck);
-
+    
+    // Extract all deck IDs
+    const deckIds = decks.map(deck => deck.id);
+    
     // Get user settings to check daily limits
     const userSettings = await userSettingsService.getUserSettings(userId);
     const newCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
     const reviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
     
-    // Add review count, total cards count, and remaining reviews to each deck
+    // Fetch deck statistics in a single batch query
+    const deckStatsMap = await cardReviewService.getDeckStatsBatch(deckIds, userId);
+    
+    // Fetch review counts in a single batch query
+    const reviewCountsMap = await logService.getReviewCountsBatch(userId, deckIds);
+    
+    // Combine the data for each deck
     for (const deck of decks) {
       try {
-        await this._addDeckStats(deck, userId);
+        // Get deck statistics
+        const deckStats = deckStatsMap.get(deck.id) || { 
+          deckId: deck.id, 
+          totalCards: 0, 
+          reviewReadyCards: 0,
+          newCards: 0,
+          dueReviewCards: 0
+        };
+        
+        // Get review counts
+        const reviewCounts = reviewCountsMap.get(deck.id) || { 
+          deckId: deck.id, 
+          newCardsCount: 0, 
+          reviewCardsCount: 0 
+        };
+        
+        // Set the statistics on the deck object
+        deck.totalCards = deckStats.totalCards;
+        deck.reviewCount = deckStats.reviewReadyCards;
+        
+        // Calculate remaining cards based on daily limits
+        const newCardsRemaining = Math.max(0, newCardsLimit - reviewCounts.newCardsCount);
+        const reviewCardsRemaining = Math.max(0, reviewCardsLimit - reviewCounts.reviewCardsCount);
+        
+        // Calculate available cards using the detailed statistics
+        const availableNewCards = Math.min(deckStats.newCards, newCardsRemaining);
+        const availableReviewCards = Math.min(deckStats.dueReviewCards, reviewCardsRemaining);
+        
+        // Set the remaining reviews on the deck object
+        deck.remainingReviews = availableNewCards + availableReviewCards;
       } catch (error) {
         console.error(`Error calculating stats for deck ${deck.id}:`, error);
         deck.reviewCount = 0;
@@ -58,7 +101,8 @@ export const deckService = {
         deck.remainingReviews = 0;
       }
     }
-
+    
+    console.timeEnd('getAllDecks');
     return decks;
   },
 

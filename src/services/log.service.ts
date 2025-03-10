@@ -25,6 +25,15 @@ export interface ReviewCountParams {
   cardType?: 'new' | 'review' | 'all'; // defaults to 'all'
 }
 
+/**
+ * Interface for deck review counts
+ */
+export interface DeckReviewCounts {
+  deckId: string;
+  newCardsCount: number;
+  reviewCardsCount: number;
+}
+
 export const logService = {
   /**
    * Create a new review log
@@ -165,5 +174,76 @@ export const logService = {
       newCardsCount,
       reviewCardsCount
     };
+  },
+
+  /**
+   * Get review counts for multiple decks in a single query
+   * @param userId The user ID
+   * @param deckIds Array of deck IDs to get counts for
+   * @param timeWindow Time window in hours (default: 24)
+   * @returns Map of deck ID to review counts
+   */
+  async getReviewCountsBatch(
+    userId: string,
+    deckIds: string[],
+    timeWindow: number = 24
+  ): Promise<Map<string, DeckReviewCounts>> {
+    if (!deckIds.length) {
+      return new Map();
+    }
+
+    const result = new Map<string, DeckReviewCounts>();
+    
+    // Initialize the result map with zero counts for all deck IDs
+    deckIds.forEach(deckId => {
+      result.set(deckId, {
+        deckId,
+        newCardsCount: 0,
+        reviewCardsCount: 0
+      });
+    });
+
+    try {
+      // Calculate the timestamp for the start of the time window
+      const timeAgo = new Date();
+      timeAgo.setHours(timeAgo.getHours() - timeWindow);
+      
+      // Call the database function to get counts for all decks at once
+      const { data, error } = await supabaseAdmin.rpc('count_reviews_batch', {
+        p_user_id: userId,
+        p_time_ago: timeAgo.toISOString(),
+        p_deck_ids: deckIds
+      });
+      
+      if (error) {
+        console.error('[ERROR] Error in getReviewCountsBatch:', {
+          error,
+          message: error.message || '',
+          details: error.details || '',
+          hint: error.hint || '',
+          code: error.code || ''
+        });
+        return result;
+      }
+      
+      // Process the results
+      if (data && data.length > 0) {
+        data.forEach((item: any) => {
+          const deckId = item.deck_id;
+          if (result.has(deckId)) {
+            result.set(deckId, {
+              deckId,
+              newCardsCount: Number(item.new_cards_count || 0),
+              reviewCardsCount: Number(item.review_cards_count || 0)
+            });
+          }
+        });
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('[ERROR] Exception in getReviewCountsBatch:', error);
+      return result;
+    }
   }
 }; 
