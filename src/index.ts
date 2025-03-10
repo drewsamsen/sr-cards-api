@@ -5,7 +5,7 @@ import path from 'path';
 import { router } from './routes';
 import { errorHandler } from './middleware/errorHandler';
 
-// Load environment-specific variables
+// Load environment-specific variabls
 const envFile = process.env.NODE_ENV === 'production' 
   ? '.env.production' 
   : '.env.development';
