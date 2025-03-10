@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { router } from './routes';
 import { errorHandler } from './middleware/errorHandler';
+import corsOptions from './config/cors';
 
 // Load environment-specific variables
 const envFile = process.env.NODE_ENV === 'production' 
@@ -16,6 +17,15 @@ dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 const app = express();
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
+// Apply middleware first, before any routes
+// CORS configuration - using our dedicated config
+app.use(cors(corsOptions));
+
+// Increase JSON body parser limit to 10MB for large CSV data
+app.use(express.json({ limit: '10mb' }));
+// Increase URL-encoded body parser limit to 10MB
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
 // Root route handler - simple JSON response
 app.get('/', (req, res) => {
   res.status(200).json({
@@ -26,17 +36,6 @@ app.get('/', (req, res) => {
     version: process.env.npm_package_version || '1.0.0'
   });
 });
-
-// Middleware
-app.use(cors({
-  origin: '*', // Allow requests from any origin
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-// Increase JSON body parser limit to 10MB for large CSV data
-app.use(express.json({ limit: '10mb' }));
-// Increase URL-encoded body parser limit to 10MB
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Routes
 app.use('/api', router);
