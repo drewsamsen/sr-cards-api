@@ -16,11 +16,9 @@ dotenv.config({ path: path.resolve(process.cwd(), envFile) });
 const app = express();
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-// Simple CORS configuration
+// Simple CORS configuration - this is a fallback for local development
+// In production, the CORS headers are set by Vercel through vercel.json
 app.use(cors());
-
-// Handle OPTIONS requests for preflight
-app.options('*', cors());
 
 // Increase JSON body parser limit to 10MB for large CSV data
 app.use(express.json({ limit: '10mb' }));
