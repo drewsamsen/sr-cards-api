@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { deckService } from '../services/deck.service';
 import { asyncHandler } from '../utils';
 import { AuthenticatedRequest } from '../middleware/auth';

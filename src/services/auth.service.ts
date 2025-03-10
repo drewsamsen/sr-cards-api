@@ -68,7 +68,7 @@ export const authService = {
   /**
    * Sign out a user
    */
-  async signOut(token: string) {
+  async signOut(_token: string) {
     const { error } = await supabaseAnon.auth.signOut({
       scope: 'global',
     });

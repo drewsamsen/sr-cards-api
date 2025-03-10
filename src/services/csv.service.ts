@@ -126,7 +126,7 @@ export const csvService = {
     let matchCount = 0;
     
     // Check each value in the record
-    for (const [key, value] of Object.entries(record)) {
+    for (const [_key, value] of Object.entries(record)) {
       // Skip empty values
       if (!value || value.trim() === '') {
         continue;

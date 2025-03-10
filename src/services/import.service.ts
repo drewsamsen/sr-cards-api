@@ -1,8 +1,8 @@
 import { supabaseAdmin } from '../config/supabase';
 import { Import, ImportDB, ImportSummary, CardPreview, ImportPreviewResponse, ImportResultResponse } from '../models/import.model';
 import { csvService } from './csv.service';
-import { snakeToCamelObject, camelToSnakeObject } from '../utils';
 import { cardService } from './card.service';
+import { snakeToCamelObject } from '../utils';
 
 export const importService = {
   /**
@@ -18,7 +18,7 @@ export const importService = {
       const sanitizedCsvData = csvService.sanitizeCsvData(csvData);
       
       // Parse and validate CSV data with tab delimiter
-      const { parsedData, preview: initialPreview, summary: initialSummary } = csvService.parseAndValidate(sanitizedCsvData);
+      const { parsedData, preview: _initialPreview, summary: initialSummary } = csvService.parseAndValidate(sanitizedCsvData);
 
       // Check for duplicates
       const { cards: previewWithDuplicates, duplicateCount, duplicateDetails } = 

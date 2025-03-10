@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { importService } from '../services/import.service';
 import { deckService } from '../services/deck.service';
 import { CreateImportPreviewDTO, ConfirmImportDTO } from '../models/import.model';
