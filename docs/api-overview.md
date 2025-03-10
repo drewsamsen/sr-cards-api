@@ -22,6 +22,13 @@ Most endpoints require authentication. To authenticate, include the JWT token in
 Authorization: Bearer <your-jwt-token>
 ```
 
+The API provides endpoints for authentication:
+- `POST /api/auth/register`: Register a new user
+- `POST /api/auth/login`: Log in and get tokens
+- `POST /api/auth/refresh`: Refresh an expired token
+- `POST /api/auth/logout`: Log out
+- `GET /api/auth/me`: Get current user information
+
 For more details on authentication, see [Authentication Documentation](./authentication.md).
 
 ## Response Format

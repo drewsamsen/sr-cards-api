@@ -4,7 +4,7 @@ This document outlines the authentication features available in the Card API.
 
 ## Overview
 
-The Card API uses Supabase for authentication. It provides endpoints for user registration, login, logout, and retrieving the current user's information.
+The Card API uses Supabase for authentication. It provides endpoints for user registration, login, logout, refreshing tokens, and retrieving the current user's information.
 
 Authentication is implemented using JWT (JSON Web Tokens). When a user logs in, they receive an access token that must be included in the `Authorization` header for protected routes.
 
@@ -14,6 +14,18 @@ Authentication is powered by Supabase, which is configured in the `src/config/su
 
 - `supabaseAnon`: Uses the anon key for client-side operations
 - `supabaseAdmin`: Uses the service role key for server-side operations
+
+The Supabase clients are configured with enhanced session persistence options to maintain longer authentication sessions in serverless environments:
+
+```typescript
+const supabaseOptions = {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false
+  }
+};
+```
 
 ## Database Schema
 
@@ -109,6 +121,39 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 }
 ```
 
+### Refresh Token
+
+**Endpoint:** `POST /api/auth/refresh`
+
+**Description:** Refreshes an expired access token using a refresh token. This endpoint is particularly useful in serverless environments where maintaining long-lived authentication sessions can be challenging.
+
+**Request Body:**
+```json
+{
+  "refreshToken": "jwt-refresh-token"
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "data": {
+    "user": {
+      "id": "user-uuid",
+      "email": "user@example.com",
+      "fullName": "John Doe"
+    },
+    "token": "new-jwt-access-token",
+    "refreshToken": "new-jwt-refresh-token"
+  }
+}
+```
+
+**Error Responses:**
+- `400 Bad Request`: Missing refresh token
+- `401 Unauthorized`: Invalid or expired refresh token
+
 ### Logout
 
 **Endpoint:** `POST /api/auth/logout`
@@ -193,6 +238,19 @@ export const authenticate = async (
 };
 ```
 
+## Token Refresh Flow
+
+When using the API with a frontend application, the recommended token refresh flow is:
+
+1. Frontend makes a request to a protected endpoint with the access token
+2. If the access token is expired, the API returns a 401 Unauthorized response
+3. Frontend detects the 401 response and calls the `/api/auth/refresh` endpoint with the refresh token
+4. If the refresh token is valid, the API returns new access and refresh tokens
+5. Frontend updates its stored tokens and retries the original request
+6. If the refresh token is also expired, the user must log in again
+
+This flow ensures that users can maintain long-lived sessions without needing to log in frequently, while still maintaining security.
+
 ## Error Handling
 
 Authentication errors return appropriate HTTP status codes:
@@ -216,6 +274,11 @@ curl -X POST http://localhost:3000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password123"}'
 
+# Refresh token (replace REFRESH_TOKEN with the refresh token from login response)
+curl -X POST http://localhost:3000/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken":"REFRESH_TOKEN"}'
+
 # Get current user (replace TOKEN with the token from login response)
 curl -X GET http://localhost:3000/api/auth/me \
   -H "Authorization: Bearer TOKEN"
@@ -229,5 +292,6 @@ curl -X POST http://localhost:3000/api/auth/logout \
 
 - Passwords are securely hashed by Supabase
 - JWT tokens have an expiration time
+- Refresh tokens provide a secure way to maintain long-lived sessions
 - Row Level Security (RLS) is enabled on the profiles table
 - Service role operations are only performed server-side 

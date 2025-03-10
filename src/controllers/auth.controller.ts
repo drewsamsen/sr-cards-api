@@ -112,4 +112,57 @@ export const authController = {
       },
     });
   }),
+
+  /**
+   * Refresh authentication tokens
+   */
+  refreshToken: asyncHandler(async (req: Request, res: Response) => {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Refresh token is required',
+      });
+    }
+
+    try {
+      const { session, user } = await authService.refreshToken(refreshToken);
+
+      if (!session || !user) {
+        return res.status(401).json({
+          status: 'error',
+          message: 'Failed to refresh token',
+        });
+      }
+
+      res.status(200).json({
+        status: 'success',
+        data: {
+          user: {
+            id: user.id,
+            email: user.email,
+            fullName: user.user_metadata?.full_name,
+          },
+          token: session.access_token,
+          refreshToken: session.refresh_token,
+        },
+      });
+    } catch (error: any) {
+      // Handle specific refresh token errors
+      if (error.message && (
+        error.message.includes('invalid refresh token') || 
+        error.message.includes('expired') ||
+        error.message.includes('JWT')
+      )) {
+        return res.status(401).json({
+          status: 'error',
+          message: 'Invalid or expired refresh token',
+        });
+      }
+      
+      // Re-throw other errors to be handled by the error middleware
+      throw error;
+    }
+  }),
 }; 

@@ -92,4 +92,26 @@ export const authService = {
 
     return data;
   },
+
+  /**
+   * Refresh the access token using a refresh token
+   * @param refreshToken The refresh token to use for obtaining a new access token
+   * @returns New session data with refreshed tokens
+   */
+  async refreshToken(refreshToken: string) {
+    console.log('Attempting to refresh token');
+    
+    // Create a new Supabase client session with the refresh token
+    const { data, error } = await supabaseAnon.auth.refreshSession({
+      refresh_token: refreshToken
+    });
+
+    if (error) {
+      console.error('Error refreshing token:', error);
+      throw error;
+    }
+
+    console.log('Token refreshed successfully');
+    return data;
+  },
 }; 
