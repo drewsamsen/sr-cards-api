@@ -18,11 +18,14 @@ export const importService = {
       const sanitizedCsvData = csvService.sanitizeCsvData(csvData);
       
       // Parse and validate CSV data with tab delimiter
-      const { parsedData, preview: _initialPreview, summary: initialSummary } = csvService.parseAndValidate(sanitizedCsvData);
+      const { parsedData: initialParsedData, preview: _initialPreview, summary: initialSummary } = csvService.parseAndValidate(sanitizedCsvData);
 
-      // Check for duplicates
+      // Detect and handle duplicates within the import file itself
+      const { deduplicatedData, internalDuplicates } = csvService.detectInternalDuplicates(initialParsedData);
+      
+      // Check for duplicates against existing cards in the database
       const { cards: previewWithDuplicates, duplicateCount, duplicateDetails } = 
-        await csvService.checkForDuplicates(parsedData, deckId, userId);
+        await csvService.checkForDuplicates(deduplicatedData, deckId, userId);
       
       // Filter out duplicates from the preview array and take up to 10 valid cards
       const validCards = previewWithDuplicates.filter(card => card.status === 'valid');
@@ -36,8 +39,19 @@ export const importService = {
       // Update summary with duplicate information
       const summary: ImportSummary = {
         ...initialSummary,
+        totalRows: initialParsedData.length,
+        validRows: deduplicatedData.length - duplicateCount,
+        invalidRows: initialSummary.invalidRows,
         duplicateCards: duplicateCount,
-        duplicateDetails: duplicateDetails.length > 0 ? duplicateDetails : undefined
+        duplicateDetails: duplicateDetails.length > 0 ? duplicateDetails : undefined,
+        internalDuplicates: internalDuplicates.count > 0 ? {
+          count: internalDuplicates.count,
+          details: internalDuplicates.details.map(detail => ({
+            row: detail.duplicateIndex + 2, // +2 because index is 0-based and we skip the header row
+            cardFront: detail.cardFront,
+            originalRow: detail.originalIndex + 2 // +2 for the same reason
+          }))
+        } : undefined
       };
 
       // Create a new import record
@@ -46,7 +60,7 @@ export const importService = {
         deck_id: deckId,
         status: 'pending',
         csv_data: sanitizedCsvData,
-        parsed_data: parsedData,
+        parsed_data: deduplicatedData, // Store deduplicated data
         summary
       };
 
@@ -139,7 +153,7 @@ export const importService = {
       // Get the parsed data and summary from the import record
       const { parsedData, summary } = importRecord;
       
-      // Check for duplicates in bulk
+      // Check for duplicates in bulk against the database
       const { cards: cardsWithDuplicateStatus, duplicateCount, duplicateDetails } = 
         await csvService.checkForDuplicates(parsedData, importRecord.deckId, userId);
       

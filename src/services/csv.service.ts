@@ -754,10 +754,96 @@ export const csvService = {
       return false;
     }
     
-    // Use Levenshtein distance for fuzzy matching
+    // For very short strings, require exact match
+    if (text1.length <= 3 || text2.length <= 3) {
+      return text1 === text2;
+    }
+    
+    // For longer strings, use Levenshtein distance
+    // Use a more conservative threshold for fuzzy matching
     const distance = cardService.levenshteinDistance(text1, text2);
-    const threshold = Math.max(2, Math.floor(text1.length * 0.2)); // 20% of length or at least 2
+    const threshold = Math.min(2, Math.floor(text1.length * 0.15)); // 15% of length or at most 2
     
     return distance <= threshold;
+  },
+
+  /**
+   * Detect duplicates within the parsed data itself
+   * @param parsedData The parsed card data
+   * @returns Object containing deduplicated data and duplicate details
+   */
+  detectInternalDuplicates(parsedData: any[]): {
+    deduplicatedData: any[];
+    internalDuplicates: {
+      count: number;
+      details: { originalIndex: number; duplicateIndex: number; cardFront: string }[];
+    };
+  } {
+    const normalizedMap = new Map<string, { index: number; card: any }>();
+    const simplifiedMap = new Map<string, { index: number; card: any }>();
+    const deduplicatedData: any[] = [];
+    const duplicateDetails: { originalIndex: number; duplicateIndex: number; cardFront: string }[] = [];
+    let duplicateCount = 0;
+    
+    // Process each card
+    for (let index = 0; index < parsedData.length; index++) {
+      const card = parsedData[index];
+      
+      // Skip cards with empty fronts
+      if (!card.front || card.front.trim() === '') {
+        deduplicatedData.push(card);
+        continue;
+      }
+      
+      const normalizedFront = this.normalizeTextForComparison(card.front);
+      const simplifiedFront = this.simplifyTextForComparison(normalizedFront);
+      
+      // Check for duplicates
+      let isDuplicate = false;
+      let originalIndex = -1;
+      
+      // Check for exact matches
+      if (normalizedMap.has(normalizedFront)) {
+        isDuplicate = true;
+        originalIndex = normalizedMap.get(normalizedFront)!.index;
+      }
+      // Check for simplified matches
+      else if (simplifiedMap.has(simplifiedFront)) {
+        isDuplicate = true;
+        originalIndex = simplifiedMap.get(simplifiedFront)!.index;
+      }
+      // Check for fuzzy matches
+      else {
+        for (const [existingFront, existingCard] of simplifiedMap.entries()) {
+          if (this.isFuzzyMatch(simplifiedFront, existingFront)) {
+            isDuplicate = true;
+            originalIndex = existingCard.index;
+            break;
+          }
+        }
+      }
+      
+      if (isDuplicate) {
+        duplicateCount++;
+        duplicateDetails.push({
+          originalIndex,
+          duplicateIndex: index,
+          cardFront: card.front
+        });
+      } else {
+        // Not a duplicate, add to maps and deduplicated data
+        normalizedMap.set(normalizedFront, { index, card });
+        simplifiedMap.set(simplifiedFront, { index, card });
+        deduplicatedData.push(card);
+      }
+    }
+    
+    return {
+      deduplicatedData,
+      internalDuplicates: {
+        count: duplicateCount,
+        details: duplicateDetails
+      }
+    };
   }
 }; 

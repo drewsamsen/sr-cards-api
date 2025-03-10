@@ -35,6 +35,10 @@ export interface ImportSummary {
   duplicateDetails?: DuplicateCardError[];
   skippedHeaderRows?: number[];
   errors?: ImportError[];
+  internalDuplicates?: {
+    count: number;
+    details: InternalDuplicateError[];
+  };
 }
 
 // Import error interface
@@ -48,6 +52,13 @@ export interface DuplicateCardError {
   row: number;
   cardFront: string;
   existingCardFront: string;
+}
+
+// Internal duplicate error interface
+export interface InternalDuplicateError {
+  row: number;
+  cardFront: string;
+  originalRow: number;
 }
 
 // Request DTOs
