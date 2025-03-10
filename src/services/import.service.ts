@@ -42,7 +42,7 @@ export const importService = {
         totalRows: initialParsedData.length,
         validRows: deduplicatedData.length - duplicateCount,
         invalidRows: initialSummary.invalidRows,
-        duplicateCards: duplicateCount,
+        duplicateCards: duplicateCount + internalDuplicates.count,
         duplicateDetails: duplicateDetails.length > 0 ? duplicateDetails : undefined,
         internalDuplicates: internalDuplicates.count > 0 ? {
           count: internalDuplicates.count,
