@@ -1,11 +1,10 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/index.js",
-      "use": "@vercel/node"
+  "functions": {
+    "api/**/*": {
+      "maxDuration": 60
     }
-  ],
+  },
   "routes": [
     {
       "src": "/api/(.*)",
@@ -29,10 +28,5 @@
         "Access-Control-Allow-Credentials": "true"
       }
     }
-  ],
-  "functions": {
-    "api/**/*": {
-      "maxDuration": 60
-    }
-  }
+  ]
 }
