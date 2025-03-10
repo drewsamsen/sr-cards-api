@@ -2,7 +2,7 @@ import { supabaseAdmin } from '../config/supabase';
 import { Import, ImportDB, ImportSummary, CardPreview, ImportPreviewResponse, ImportResultResponse } from '../models/import.model';
 import { csvService } from './csv.service';
 import { cardService } from './card.service';
-import { snakeToCamelObject } from '../utils';
+import { snakeToCamelObject, camelToSnakeObject } from '../utils';
 
 export const importService = {
   /**
@@ -136,41 +136,79 @@ export const importService = {
         throw new Error('Import has expired');
       }
 
-      // Start a transaction to create cards
+      // Get the parsed data and summary from the import record
       const { parsedData, summary } = importRecord;
+      
+      // Check for duplicates in bulk
+      const { cards: cardsWithDuplicateStatus, duplicateCount, duplicateDetails } = 
+        await csvService.checkForDuplicates(parsedData, importRecord.deckId, userId);
+      
+      // Filter out duplicates
+      const validCards = parsedData.filter((card: any, index: number) => {
+        const cardWithStatus = cardsWithDuplicateStatus[index];
+        return cardWithStatus.status === 'valid';
+      });
+      
+      // Prepare cards for bulk insert
+      const cardsToInsert = validCards.map((card: any) => ({
+        user_id: userId,
+        deck_id: importRecord.deckId,
+        front: card.front,
+        back: card.back,
+        tags: card.tags || [],
+        state: card.state || 0,
+        due: card.due || null
+      }));
+      
+      // Track success and failure counts
       let successCount = 0;
       let failureCount = 0;
-      let duplicateCount = 0;
-      const errors = [];
-      const duplicateDetails = [];
-
-      // Process each card
-      for (let i = 0; i < parsedData.length; i++) {
-        const card = parsedData[i];
+      const errors: any[] = [];
+      
+      // If there are cards to insert, do a bulk insert
+      if (cardsToInsert.length > 0) {
         try {
-          // Check for similar cards before creating
-          const similarCard = await cardService.findSimilarCardFront(card.front, importRecord.deckId, userId);
-          if (similarCard) {
-            duplicateCount++;
-            duplicateDetails.push({
-              row: i + 2, // +2 because index is 0-based and we skip the header row
-              cardFront: card.front,
-              existingCardFront: similarCard.front
-            });
-            continue; // Skip this card and move to the next one
+          // Split into chunks of 10 cards to avoid hitting database limits
+          const chunkSize = 10;
+          for (let i = 0; i < cardsToInsert.length; i += chunkSize) {
+            const chunk = cardsToInsert.slice(i, i + chunkSize);
+            
+            const { data, error } = await supabaseAdmin
+              .from('cards')
+              .insert(chunk)
+              .select();
+            
+            if (error) {
+              // If bulk insert fails, try individual inserts as fallback
+              console.error('Bulk insert failed, falling back to individual inserts:', error);
+              
+              // Process each card in the chunk individually
+              for (let j = 0; j < chunk.length; j++) {
+                const cardIndex = i + j;
+                try {
+                  await cardService.createCard({
+                    front: validCards[cardIndex].front,
+                    back: validCards[cardIndex].back
+                  }, importRecord.deckId, userId);
+                  successCount++;
+                } catch (cardError: any) {
+                  failureCount++;
+                  errors.push({
+                    row: cardIndex + 2, // +2 because index is 0-based and we skip the header row
+                    message: cardError.message
+                  });
+                }
+              }
+            } else {
+              // Bulk insert succeeded
+              successCount += data.length;
+            }
           }
-          
-          // Create the card
-          await cardService.createCard({
-            front: card.front,
-            back: card.back
-          }, importRecord.deckId, userId);
-          successCount++;
-        } catch (error: any) {
-          failureCount++;
+        } catch (bulkError: any) {
+          console.error('Error during bulk insert:', bulkError);
+          failureCount = cardsToInsert.length;
           errors.push({
-            row: i + 2, // +2 because index is 0-based and we skip the header row
-            message: error.message
+            message: `Bulk insert failed: ${bulkError.message}`
           });
         }
       }

@@ -1,6 +1,8 @@
 import { parse } from 'csv-parse/sync';
 import { ImportError, ImportSummary, CardPreview } from '../models/import.model';
 import { cardService } from './card.service';
+import { supabaseAdmin } from '../config/supabase';
+import { Card } from '../models/card.model';
 
 interface ParsedCard {
   front: string;
@@ -19,6 +21,9 @@ const COLUMN_NAME_MAPPINGS = {
   due: ['due', 'duedate', 'due_date']
 };
 
+// Cache for processed text to avoid reprocessing
+const processedTextCache = new Map<string, string>();
+
 export const csvService = {
   /**
    * Parse and validate CSV data
@@ -35,20 +40,19 @@ export const csvService = {
       // Auto-detect delimiter if not specified
       const detectedDelimiter = delimiter || this.detectDelimiter(csvData);
       
-      // Try to parse with standard CSV parser first
-      try {
-        // Configure CSV parser with more robust options
-        const parseOptions = {
-          columns: true,
-          skip_empty_lines: true,
-          trim: true,
-          relax_quotes: true,        // Be more forgiving with quotes
-          relax_column_count: true,  // Allow rows with inconsistent column counts
-          escape: '\\',              // Support escaped characters
-          skip_records_with_error: false, // Don't skip records with errors, we want to catch them
-          delimiter: detectedDelimiter // Use the detected or specified delimiter
-        };
+      // Configure CSV parser with more robust options
+      const parseOptions = {
+        columns: true,
+        skip_empty_lines: true,
+        trim: true,
+        relax_quotes: true,        // Be more forgiving with quotes
+        relax_column_count: true,  // Allow rows with inconsistent column counts
+        escape: '\\',              // Support escaped characters
+        skip_records_with_error: false, // Don't skip records with errors, we want to catch them
+        delimiter: detectedDelimiter // Use the detected or specified delimiter
+      };
 
+      try {
         // Try to parse the CSV data
         const rawRecords = parse(csvData, parseOptions) as Record<string, string>[];
         
@@ -197,6 +201,7 @@ export const csvService = {
 
   /**
    * Process text content by formatting spaces and cleaning up quotes
+   * Optimized version that consolidates multiple regex operations
    * @param text The text to process
    * @returns Processed text with proper formatting
    */
@@ -205,72 +210,52 @@ export const csvService = {
       return text;
     }
     
-    // Apply all text processing steps in sequence
-    let result = this.convertTripleSpacesToLineBreaks(text);
+    // Check cache first
+    if (processedTextCache.has(text)) {
+      return processedTextCache.get(text)!;
+    }
     
-    // Handle dictionary pattern first
-    result = this.handleDictionaryPattern(result);
+    // Convert triple spaces to line breaks first
+    let result = text.replace(/\s{3,}/g, '\n');
+    
+    // Single regex to handle dictionary pattern
+    result = result.replace(/^(\w+)\s+"([^"]+)\s+""([^"]+)"""\s*$/, '$1 $2 "$3"');
     
     // Remove leading triple quotes
     if (result.startsWith('"""')) {
       result = result.substring(3);
     }
     
-    // Handle complex pattern with multiple quoted sections
-    // This pattern matches: text. """"quoted text"""" text. """"quoted text"""""""
-    const complexMultiPattern = /^(.*?)\.\s+"{4}([^"\.]+)"{4}\s+(.*?)\.\s+"{4}([^"\.]+)"{3,}$/;
-    if (complexMultiPattern.test(result)) {
-      result = result.replace(complexMultiPattern, '$1. "$2" $3. "$4"');
-    }
+    // Consolidated regex for handling quoted sections
+    // This handles multiple patterns in one pass
+    result = result
+      // Handle complex pattern with multiple quoted sections
+      .replace(/^(.*?)\.\s+"{4}([^"\.]+)"{4}\s+(.*?)\.\s+"{4}([^"\.]+)"{3,}$/, '$1. "$2" $3. "$4"')
+      // Handle multiple quoted sections with periods in between
+      .replace(/\.\s+"{4}([^"\.]+)"{4}/g, '. "$1"')
+      // Handle the last quoted section which might have more trailing quotes
+      .replace(/\.\s+"{4}([^"\.]+)"{3,}$/, '. "$1"')
+      // Special case for the user's specific pattern
+      .replace(/^"?(.*?)\.\s+""([^"]+)"$/, '$1. "$2"')
+      // Handle dictionary examples pattern
+      .replace(/(verb|noun)\s+"([^"]+)\.\s+""([^"]+)"""/, '$1 $2. "$3"')
+      // Handle the complex case with multiple quotes around examples
+      .replace(/^"?(.*?)\.\s+"{4}([^"]+)"{3,}$/, '$1. "$2"')
+      // Handle triple quotes around words
+      .replace(/"""([^"]+)"""/g, '"$1"')
+      // Handle quadruple quotes around words
+      .replace(/""""([^"]+)""""/g, '"$1"')
+      // Replace doubled quotes with single quotes
+      .replace(/""/g, '"')
+      // Remove leading and trailing quotes
+      .replace(/^"([\s\S]*)"$/, '$1')
+      // Handle any remaining triple or more quotes at the end
+      .replace(/"{3,}$/, '')
+      // Final check for any remaining doubled quotes
+      .replace(/""/g, '"');
     
-    // Handle multiple quoted sections with periods in between
-    // This pattern matches: text. """"quoted text"""" more text
-    const multiSectionPattern = /\.\s+"{4}([^"\.]+)"{4}/g;
-    result = result.replace(multiSectionPattern, '. "$1"');
-    
-    // Handle the last quoted section which might have more trailing quotes
-    // This pattern matches: text. """"quoted text""""""
-    const lastSectionPattern = /\.\s+"{4}([^"\.]+)"{3,}$/;
-    if (lastSectionPattern.test(result)) {
-      result = result.replace(lastSectionPattern, '. "$1"');
-    }
-    
-    // Special case for the user's specific pattern
-    const userPattern = /^"?(.*?)\.\s+""([^"]+)"$/;
-    if (userPattern.test(result)) {
-      result = result.replace(userPattern, '$1. "$2"');
-    }
-    
-    // Handle dictionary examples pattern
-    const dictionaryExamplePattern = /(verb|noun)\s+"([^"]+)\.\s+""([^"]+)"""/;
-    if (dictionaryExamplePattern.test(result)) {
-      result = result.replace(dictionaryExamplePattern, '$1 $2. "$3"');
-    }
-    
-    // Handle the complex case with multiple quotes around examples
-    // This pattern matches both 'bombastic rhetoric' and 'a cutting rejoinder' cases
-    const complexPattern = /^"?(.*?)\.\s+"{4}([^"]+)"{3,}$/;
-    if (complexPattern.test(result)) {
-      result = result.replace(complexPattern, '$1. "$2"');
-    }
-    
-    // Handle triple quotes around words
-    result = result.replace(/"""([^"]+)"""/g, '"$1"');
-    
-    // Handle quadruple quotes around words
-    result = result.replace(/""""([^"]+)""""/g, '"$1"');
-    
-    // Replace doubled quotes with single quotes
-    result = result.replace(/""/g, '"');
-    
-    // Remove leading and trailing quotes
-    result = result.replace(/^"([\s\S]*)"$/, '$1');
-    
-    // Handle any remaining triple or more quotes at the end
-    result = result.replace(/"{3,}$/, '');
-    
-    // Final check for any remaining doubled quotes
-    result = result.replace(/""/g, '"');
+    // Cache the result
+    processedTextCache.set(text, result);
     
     return result;
   },
@@ -350,64 +335,75 @@ export const csvService = {
     const validCards: any[] = [];
     const previewCards: CardPreview[] = [];
     const errors: ImportError[] = [];
-
-    // Validate each row
-    records.forEach((record, index) => {
-      const rowNumber = index + 2; // +2 because index is 0-based and we skip the header row
+    
+    // Process in batches to avoid blocking the event loop for large imports
+    const batchSize = 10;
+    const totalBatches = Math.ceil(records.length / batchSize);
+    
+    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+      const startIndex = batchIndex * batchSize;
+      const endIndex = Math.min(startIndex + batchSize, records.length);
+      const batch = records.slice(startIndex, endIndex);
       
-      // Process text content in both front and back fields
-      if (record.front) {
-        record.front = this.processTextContent(record.front);
-      }
-      if (record.back) {
-        record.back = this.processTextContent(record.back);
-      }
-      
-      const cardPreview: CardPreview = {
-        front: record.front || '',
-        back: record.back || '',
-        status: 'valid'
-      };
+      // Process each record in the batch
+      batch.forEach((record, index) => {
+        const recordIndex = startIndex + index;
+        const rowNumber = recordIndex + 2; // +2 because index is 0-based and we skip the header row
+        
+        // Process text content in both front and back fields
+        if (record.front) {
+          record.front = this.processTextContent(record.front);
+        }
+        if (record.back) {
+          record.back = this.processTextContent(record.back);
+        }
+        
+        const cardPreview: CardPreview = {
+          front: record.front || '',
+          back: record.back || '',
+          status: 'valid'
+        };
 
-      // Process tags if present
-      if (record.tags) {
-        const tags = record.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
-        cardPreview.tags = tags;
-      }
+        // Process tags if present
+        if (record.tags) {
+          const tags = record.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+          cardPreview.tags = tags;
+        }
 
-      // Validate required fields
-      const validationErrors: string[] = [];
-      if (!record.front || record.front.trim() === '') {
-        validationErrors.push('Front side cannot be empty');
-      }
-      if (!record.back || record.back.trim() === '') {
-        validationErrors.push('Back side cannot be empty');
-      }
+        // Validate required fields
+        const validationErrors: string[] = [];
+        if (!record.front || record.front.trim() === '') {
+          validationErrors.push('Front side cannot be empty');
+        }
+        if (!record.back || record.back.trim() === '') {
+          validationErrors.push('Back side cannot be empty');
+        }
 
-      // If there are validation errors, mark as invalid
-      if (validationErrors.length > 0) {
-        cardPreview.status = 'invalid';
-        cardPreview.error = validationErrors.join(', ');
-        errors.push({
-          row: rowNumber,
-          message: validationErrors.join(', ')
-        });
-      } else {
-        // If valid, add to valid cards array
-        validCards.push({
-          front: record.front,
-          back: record.back,
-          tags: cardPreview.tags || [],
-          state: record.state ? parseInt(record.state, 10) : 0,
-          due: record.due || null
-        });
-      }
+        // If there are validation errors, mark as invalid
+        if (validationErrors.length > 0) {
+          cardPreview.status = 'invalid';
+          cardPreview.error = validationErrors.join(', ');
+          errors.push({
+            row: rowNumber,
+            message: validationErrors.join(', ')
+          });
+        } else {
+          // If valid, add to valid cards array
+          validCards.push({
+            front: record.front,
+            back: record.back,
+            tags: cardPreview.tags || [],
+            state: record.state ? parseInt(record.state, 10) : 0,
+            due: record.due || null
+          });
+        }
 
-      // Add to preview array (limit to first 10 for preview)
-      if (previewCards.length < 10) {
-        previewCards.push(cardPreview);
-      }
-    });
+        // Add to preview array (limit to first 10 for preview)
+        if (previewCards.length < 10) {
+          previewCards.push(cardPreview);
+        }
+      });
+    }
 
     // Create summary
     const summary: ImportSummary = {
@@ -604,44 +600,111 @@ export const csvService = {
     let duplicateCount = 0;
     const duplicateDetails: any[] = [];
 
-    // Process each card
-    for (let i = 0; i < parsedData.length; i++) {
-      const card = parsedData[i];
-      
-      // Check if this card is already marked as invalid
-      const cardPreview: CardPreview = {
-        front: card.front,
-        back: card.back,
-        status: 'valid'
-      };
-      
-      if (card.tags) {
-        cardPreview.tags = Array.isArray(card.tags) ? card.tags : [card.tags];
+    try {
+      // Fetch all existing cards in the deck at once
+      const { data: existingCards, error } = await supabaseAdmin
+        .from('cards')
+        .select('id, front')
+        .eq('deck_id', deckId)
+        .eq('user_id', userId);
+
+      if (error) {
+        throw error;
       }
+
+      // Create a map of normalized card fronts for faster lookups
+      const normalizedExistingCards = new Map<string, { id: string, front: string }>();
       
-      // Only check for duplicates if the card is valid
-      if (cardPreview.status === 'valid' && card.front && card.front.trim() !== '') {
-        try {
-          // Check for similar cards
-          const similarCard = await cardService.findSimilarCardFront(card.front, deckId, userId);
-          if (similarCard) {
+      existingCards.forEach((card: { id: string, front: string }) => {
+        // Normalize the card front text
+        const normalizedFront = this.normalizeTextForComparison(card.front);
+        const simplifiedFront = this.simplifyTextForComparison(normalizedFront);
+        
+        // Store both normalized and simplified versions for different matching strategies
+        normalizedExistingCards.set(normalizedFront, card);
+        normalizedExistingCards.set(simplifiedFront, card);
+      });
+
+      // Process each card in the import data
+      for (let i = 0; i < parsedData.length; i++) {
+        const card = parsedData[i];
+        
+        // Create the card preview
+        const cardPreview: CardPreview = {
+          front: card.front,
+          back: card.back,
+          status: 'valid'
+        };
+        
+        if (card.tags) {
+          cardPreview.tags = Array.isArray(card.tags) ? card.tags : [card.tags];
+        }
+        
+        // Only check for duplicates if the card is valid
+        if (cardPreview.status === 'valid' && card.front && card.front.trim() !== '') {
+          // Normalize the card front for comparison
+          const normalizedFront = this.normalizeTextForComparison(card.front);
+          const simplifiedFront = this.simplifyTextForComparison(normalizedFront);
+          
+          // Check for exact matches first (faster)
+          let isDuplicate = normalizedExistingCards.has(normalizedFront) || 
+                           normalizedExistingCards.has(simplifiedFront);
+          
+          // If no exact match, check for fuzzy matches (more expensive)
+          if (!isDuplicate && card.front.length > 3) {
+            isDuplicate = this.hasFuzzyMatch(
+              simplifiedFront, 
+              existingCards.map((c: { id: string, front: string }) => 
+                this.simplifyTextForComparison(this.normalizeTextForComparison(c.front))
+              )
+            );
+          }
+          
+          if (isDuplicate) {
             duplicateCount++;
             cardPreview.status = 'invalid';
-            cardPreview.error = `Duplicate card: Similar to existing card "${similarCard.front}"`;
+            
+            // Find the matching card for the error message
+            let matchingCard: { id: string, front: string } | undefined;
+            if (normalizedExistingCards.has(normalizedFront)) {
+              matchingCard = normalizedExistingCards.get(normalizedFront);
+            } else if (normalizedExistingCards.has(simplifiedFront)) {
+              matchingCard = normalizedExistingCards.get(simplifiedFront);
+            } else {
+              // Find the fuzzy match
+              matchingCard = existingCards.find((c: { id: string, front: string }) => 
+                this.isFuzzyMatch(
+                  simplifiedFront, 
+                  this.simplifyTextForComparison(this.normalizeTextForComparison(c.front))
+                )
+              );
+            }
+            
+            cardPreview.error = `Duplicate card: Similar to existing card "${matchingCard?.front || 'Unknown card'}"`;
             
             duplicateDetails.push({
               row: i + 2, // +2 because index is 0-based and we skip the header row
               cardFront: card.front,
-              existingCardFront: similarCard.front
+              existingCardFront: matchingCard?.front || 'Unknown card'
             });
           }
-        } catch (error) {
-          console.error('Error checking for duplicates:', error);
-          // Don't mark as duplicate if there was an error checking
         }
+        
+        cards.push(cardPreview);
       }
-      
-      cards.push(cardPreview);
+    } catch (error) {
+      console.error('Error checking for duplicates:', error);
+      // In case of error, return cards without duplicate checking
+      return {
+        cards: parsedData.map(card => ({
+          front: card.front,
+          back: card.back,
+          tags: card.tags ? (Array.isArray(card.tags) ? card.tags : [card.tags]) : undefined,
+          status: 'valid'
+        })),
+        duplicateCount: 0,
+        duplicateDetails: []
+      };
     }
 
     return {
@@ -650,4 +713,51 @@ export const csvService = {
       duplicateDetails
     };
   },
+  
+  /**
+   * Normalize text for comparison by converting to lowercase and trimming
+   * @param text The text to normalize
+   * @returns Normalized text
+   */
+  normalizeTextForComparison(text: string): string {
+    return text.trim().toLowerCase();
+  },
+  
+  /**
+   * Simplify text for comparison by removing punctuation and extra whitespace
+   * @param text The text to simplify
+   * @returns Simplified text
+   */
+  simplifyTextForComparison(text: string): string {
+    return text.replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+  },
+  
+  /**
+   * Check if there's a fuzzy match for the text in the array of existing texts
+   * @param text The text to check
+   * @param existingTexts Array of existing texts to compare against
+   * @returns Whether a fuzzy match was found
+   */
+  hasFuzzyMatch(text: string, existingTexts: string[]): boolean {
+    return existingTexts.some(existingText => this.isFuzzyMatch(text, existingText));
+  },
+  
+  /**
+   * Check if two texts are fuzzy matches using Levenshtein distance
+   * @param text1 First text
+   * @param text2 Second text
+   * @returns Whether the texts are fuzzy matches
+   */
+  isFuzzyMatch(text1: string, text2: string): boolean {
+    // Only check if the lengths are reasonably close to avoid unnecessary computation
+    if (Math.abs(text1.length - text2.length) > 3) {
+      return false;
+    }
+    
+    // Use Levenshtein distance for fuzzy matching
+    const distance = cardService.levenshteinDistance(text1, text2);
+    const threshold = Math.max(2, Math.floor(text1.length * 0.2)); // 20% of length or at least 2
+    
+    return distance <= threshold;
+  }
 }; 
