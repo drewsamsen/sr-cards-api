@@ -29,5 +29,10 @@
         "Access-Control-Allow-Credentials": "true"
       }
     }
-  ]
+  ],
+  "functions": {
+    "api/**/*": {
+      "maxDuration": 60
+    }
+  }
 }
