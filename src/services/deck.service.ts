@@ -101,30 +101,6 @@ export const deckService = {
         
         // IMPORTANT: Do NOT set remainingReviews to 0 just because reviewCount is 0
         // A user might still be able to review new cards even if all review cards are caught up
-        
-        // Log for debugging
-        console.log(`Deck ${deck.name} (${deck.id}):`, {
-          totalCards: deck.totalCards,
-          reviewCount: deck.reviewCount,
-          remainingReviews: deck.remainingReviews,
-          drew: {
-            newCardsLimit: newCardsLimit,
-            newCardsCount: reviewCounts.newCardsCount
-          },
-          stats: {
-            newCards: deckStats.newCards,
-            dueReviewCards: deckStats.dueReviewCards,
-            reviewReadyCards: deckStats.reviewReadyCards
-          },
-          limits: {
-            newCardsRemaining,
-            reviewCardsRemaining
-          },
-          available: {
-            availableNewCards,
-            availableReviewCards
-          }
-        });
       } catch (error) {
         console.error(`Error calculating stats for deck ${deck.id}:`, error);
         deck.reviewCount = 0;
@@ -564,22 +540,5 @@ export const deckService = {
     
     // IMPORTANT: Do NOT set remainingReviews to 0 just because reviewCount is 0
     // A user might still be able to review new cards even if all review cards are caught up
-    
-    // Log for debugging
-    console.log(`[Legacy] Deck ${deck.id}:`, {
-      totalCards: deck.totalCards,
-      reviewCount: deck.reviewCount,
-      remainingReviews: deck.remainingReviews,
-      available: {
-        availableNewCards,
-        availableReviewCards
-      },
-      limits: {
-        newCardsRemaining,
-        reviewCardsRemaining,
-        newCardsCount,
-        newCardsLimit
-      }
-    });
   }
 }; 
