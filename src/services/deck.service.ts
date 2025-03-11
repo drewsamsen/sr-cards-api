@@ -79,9 +79,6 @@ export const deckService = {
         // Set the statistics on the deck object
         deck.totalCards = deckStats.totalCards;
         
-        // reviewCount should be the total number of cards ready for review
-        deck.reviewCount = deckStats.reviewReadyCards;
-        
         // Set the new properties for new cards and due cards
         deck.newCards = deckStats.newCards;
         deck.dueCards = deckStats.dueReviewCards;
@@ -103,11 +100,9 @@ export const deckService = {
         // Set the remaining reviews property
         deck.remainingReviews = effectiveNewRemaining + effectiveReviewRemaining;
         
-        // IMPORTANT: Do NOT set remainingReviews to 0 just because reviewCount is 0
-        // A user might still be able to review new cards even if all review cards are caught up
+        // IMPORTANT: A user might still be able to review new cards even if all review cards are caught up
       } catch (error) {
         console.error(`Error calculating stats for deck ${deck.id}:`, error);
-        deck.reviewCount = 0;
         deck.totalCards = 0;
         deck.newCards = 0;
         deck.dueCards = 0;
@@ -119,30 +114,12 @@ export const deckService = {
     for (const deck of decks) {
       // Initialize properties if they're undefined
       deck.totalCards = deck.totalCards || 0;
-      deck.reviewCount = deck.reviewCount || 0;
       deck.newCards = deck.newCards || 0;
       deck.dueCards = deck.dueCards || 0;
       deck.remainingReviews = deck.remainingReviews || 0;
       
-      // Ensure reviewCount is not greater than totalCards
-      if (deck.reviewCount > deck.totalCards) {
-        console.warn(`Correcting invalid reviewCount for deck ${deck.id}: ${deck.reviewCount} > ${deck.totalCards}`);
-        deck.reviewCount = deck.totalCards;
-      }
-      
-      // Ensure newCards + dueCards = reviewCount
-      if (deck.newCards + deck.dueCards !== deck.reviewCount) {
-        console.warn(`Correcting invalid newCards/dueCards for deck ${deck.id}: ${deck.newCards} + ${deck.dueCards} != ${deck.reviewCount}`);
-        // Prioritize the sum of newCards and dueCards as the source of truth
-        deck.reviewCount = deck.newCards + deck.dueCards;
-      }
-      
-      // NOTE: We do NOT limit remainingReviews by reviewCount
-      // A user might still be able to review new cards even if all review cards are caught up
-      
       // Ensure all values are non-negative
       deck.totalCards = Math.max(0, deck.totalCards);
-      deck.reviewCount = Math.max(0, deck.reviewCount);
       deck.newCards = Math.max(0, deck.newCards);
       deck.dueCards = Math.max(0, deck.dueCards);
       deck.remainingReviews = Math.max(0, deck.remainingReviews);
@@ -183,8 +160,9 @@ export const deckService = {
       await this._addDeckStats(deck, userId);
     } catch (statsError) {
       console.error(`Error calculating stats for deck ${deckId}:`, statsError);
-      deck.reviewCount = 0;
       deck.totalCards = 0;
+      deck.newCards = 0;
+      deck.dueCards = 0;
       deck.remainingReviews = 0;
     }
     
@@ -221,8 +199,9 @@ export const deckService = {
       await this._addDeckStats(deck, userId);
     } catch (statsError) {
       console.error(`Error calculating stats for deck ${slug}:`, statsError);
-      deck.reviewCount = 0;
       deck.totalCards = 0;
+      deck.newCards = 0;
+      deck.dueCards = 0;
       deck.remainingReviews = 0;
     }
     
@@ -490,7 +469,7 @@ export const deckService = {
   },
 
   /**
-   * Helper method to add stats (reviewCount, totalCards, remainingReviews) to a deck
+   * Helper method to add stats (totalCards, newCards, dueCards, remainingReviews) to a deck
    * @private
    */
   async _addDeckStats(deck: Deck, userId: string, userSettings?: UserSettings | null): Promise<void> {
@@ -502,8 +481,7 @@ export const deckService = {
     const newCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
     const reviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
     
-    // Get counts of available cards
-    deck.reviewCount = await cardReviewService.countReviewReadyCards(deck.id, userId);
+    // Get count of total cards
     deck.totalCards = await cardReviewService.countTotalCards(deck.id, userId);
     
     // Get counts of cards reviewed in the last 24 hours in a single call
@@ -558,8 +536,5 @@ export const deckService = {
     
     // Set the remaining reviews property
     deck.remainingReviews = effectiveNewRemaining + effectiveReviewRemaining;
-    
-    // IMPORTANT: Do NOT set remainingReviews to 0 just because reviewCount is 0
-    // A user might still be able to review new cards even if all review cards are caught up
   }
 }; 

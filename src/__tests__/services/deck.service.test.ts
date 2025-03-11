@@ -138,7 +138,6 @@ describe('Deck Service', () => {
       // Check first deck
       expect(result[0].id).toBe('deck-1');
       expect(result[0].totalCards).toBe(50);
-      expect(result[0].reviewCount).toBe(15);
       expect(result[0].newCards).toBe(5);
       expect(result[0].dueCards).toBe(10);
       expect(result[0].remainingReviews).toBe(15); // 7 new cards (limit 10-3) + 13 review cards (limit 20-7)
@@ -146,7 +145,6 @@ describe('Deck Service', () => {
       // Check second deck
       expect(result[1].id).toBe('deck-2');
       expect(result[1].totalCards).toBe(30);
-      expect(result[1].reviewCount).toBe(8);
       expect(result[1].newCards).toBe(3);
       expect(result[1].dueCards).toBe(5);
       expect(result[1].remainingReviews).toBe(8); // 8 new cards (limit 10-2) + 16 review cards (limit 20-4)
@@ -233,7 +231,6 @@ describe('Deck Service', () => {
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('deck-1');
       expect(result[0].totalCards).toBe(50);
-      expect(result[0].reviewCount).toBe(5);
       expect(result[0].newCards).toBe(5);
       expect(result[0].dueCards).toBe(0);
       expect(result[0].remainingReviews).toBe(5); // 7 new cards (limit 10-3) + 0 review cards
@@ -320,7 +317,6 @@ describe('Deck Service', () => {
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('deck-1');
       expect(result[0].totalCards).toBe(100);
-      expect(result[0].reviewCount).toBe(50);
       expect(result[0].newCards).toBe(20);
       expect(result[0].dueCards).toBe(30);
       expect(result[0].remainingReviews).toBe(0); // Daily limits reached for both new and review cards
@@ -426,7 +422,6 @@ describe('Deck Service', () => {
 
       // Verify the result
       expect(mockDeck.totalCards).toBe(50);
-      expect(mockDeck.reviewCount).toBe(15);
       expect(mockDeck.newCards).toBe(5);
       expect(mockDeck.dueCards).toBe(10);
       expect(mockDeck.remainingReviews).toBe(15); // 7 new cards (limit 10-3) + 10 review cards (limit 20-7, but only 10 due)

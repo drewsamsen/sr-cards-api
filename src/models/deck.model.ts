@@ -18,7 +18,6 @@ export interface Deck {
   description: string | null;
   createdAt: string;
   updatedAt: string;
-  reviewCount?: number; // Number of cards ready for review
   newCards?: number;    // Number of new cards in the deck
   dueCards?: number;    // Number of cards due for review (not new, with due date in the past)
   totalCards?: number;  // Total number of cards in the deck
