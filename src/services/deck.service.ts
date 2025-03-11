@@ -5,7 +5,7 @@ import { snakeToCamelObject, camelToSnakeObject } from '../utils';
 import { fsrsService, ReviewMetrics } from './fsrs.service';
 import { cardReviewService } from './card-review.service';
 import { logService } from './log.service';
-import { userSettingsService } from './user-settings.service';
+import { userSettingsService, UserSettings } from './user-settings.service';
 import { DailyProgressResponse } from '../models/daily-progress.model';
 
 // Define a type for the review result
@@ -73,15 +73,13 @@ export const deckService = {
           dueReviewCards: 0
         };
         
-        // Get review counts
-        const reviewCounts = reviewCountsMap.get(deck.id) || { 
-          deckId: deck.id, 
-          newCardsCount: 0, 
-          reviewCardsCount: 0 
-        };
+        // Get review counts - this should never be undefined since we initialize the map with all deck IDs
+        const reviewCounts = reviewCountsMap.get(deck.id)!;
         
         // Set the statistics on the deck object
         deck.totalCards = deckStats.totalCards;
+        
+        // reviewCount should be the total number of cards ready for review
         deck.reviewCount = deckStats.reviewReadyCards;
         
         // Calculate remaining cards based on daily limits
@@ -89,17 +87,72 @@ export const deckService = {
         const reviewCardsRemaining = Math.max(0, reviewCardsLimit - reviewCounts.reviewCardsCount);
         
         // Calculate available cards using the detailed statistics
+        // Limit by both what's available and what's allowed by daily limits
         const availableNewCards = Math.min(deckStats.newCards, newCardsRemaining);
         const availableReviewCards = Math.min(deckStats.dueReviewCards, reviewCardsRemaining);
         
-        // Set the remaining reviews on the deck object
-        deck.remainingReviews = availableNewCards + availableReviewCards;
+        // Calculate effective remaining reviews (minimum of available cards and daily limit remaining)
+        // If newCardsCount >= newCardsLimit, then no new cards should be available for review today
+        const effectiveNewRemaining = reviewCounts.newCardsCount >= newCardsLimit ? 0 : Math.min(availableNewCards || 0, newCardsRemaining);
+        const effectiveReviewRemaining = Math.min(availableReviewCards || 0, reviewCardsRemaining);
+        
+        // Set the remaining reviews property
+        deck.remainingReviews = effectiveNewRemaining + effectiveReviewRemaining;
+        
+        // IMPORTANT: Do NOT set remainingReviews to 0 just because reviewCount is 0
+        // A user might still be able to review new cards even if all review cards are caught up
+        
+        // Log for debugging
+        console.log(`Deck ${deck.name} (${deck.id}):`, {
+          totalCards: deck.totalCards,
+          reviewCount: deck.reviewCount,
+          remainingReviews: deck.remainingReviews,
+          drew: {
+            newCardsLimit: newCardsLimit,
+            newCardsCount: reviewCounts.newCardsCount
+          },
+          stats: {
+            newCards: deckStats.newCards,
+            dueReviewCards: deckStats.dueReviewCards,
+            reviewReadyCards: deckStats.reviewReadyCards
+          },
+          limits: {
+            newCardsRemaining,
+            reviewCardsRemaining
+          },
+          available: {
+            availableNewCards,
+            availableReviewCards
+          }
+        });
       } catch (error) {
         console.error(`Error calculating stats for deck ${deck.id}:`, error);
         deck.reviewCount = 0;
         deck.totalCards = 0;
         deck.remainingReviews = 0;
       }
+    }
+    
+    // Validate the numbers before returning
+    for (const deck of decks) {
+      // Initialize properties if they're undefined
+      deck.totalCards = deck.totalCards || 0;
+      deck.reviewCount = deck.reviewCount || 0;
+      deck.remainingReviews = deck.remainingReviews || 0;
+      
+      // Ensure reviewCount is not greater than totalCards
+      if (deck.reviewCount > deck.totalCards) {
+        console.warn(`Correcting invalid reviewCount for deck ${deck.id}: ${deck.reviewCount} > ${deck.totalCards}`);
+        deck.reviewCount = deck.totalCards;
+      }
+      
+      // NOTE: We do NOT limit remainingReviews by reviewCount
+      // A user might still be able to review new cards even if all review cards are caught up
+      
+      // Ensure all values are non-negative
+      deck.totalCards = Math.max(0, deck.totalCards);
+      deck.reviewCount = Math.max(0, deck.reviewCount);
+      deck.remainingReviews = Math.max(0, deck.remainingReviews);
     }
     
     console.timeEnd('getAllDecks');
@@ -447,9 +500,12 @@ export const deckService = {
    * Helper method to add stats (reviewCount, totalCards, remainingReviews) to a deck
    * @private
    */
-  async _addDeckStats(deck: Deck, userId: string): Promise<void> {
-    // Get user settings to check daily limits
-    const userSettings = await userSettingsService.getUserSettings(userId);
+  async _addDeckStats(deck: Deck, userId: string, userSettings?: UserSettings | null): Promise<void> {
+    // Get user settings to check daily limits if not provided
+    if (!userSettings) {
+      userSettings = await userSettingsService.getUserSettings(userId);
+    }
+    
     const newCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
     const reviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
     
@@ -499,10 +555,31 @@ export const deckService = {
     }
     
     // Calculate effective remaining reviews (minimum of available cards and daily limit remaining)
-    const effectiveNewRemaining = Math.min(availableNewCards || 0, newCardsRemaining);
+    // If newCardsCount >= newCardsLimit, then no new cards should be available for review today
+    const effectiveNewRemaining = newCardsCount >= newCardsLimit ? 0 : Math.min(availableNewCards || 0, newCardsRemaining);
     const effectiveReviewRemaining = Math.min(availableReviewCards || 0, reviewCardsRemaining);
     
     // Set the remaining reviews property
     deck.remainingReviews = effectiveNewRemaining + effectiveReviewRemaining;
+    
+    // IMPORTANT: Do NOT set remainingReviews to 0 just because reviewCount is 0
+    // A user might still be able to review new cards even if all review cards are caught up
+    
+    // Log for debugging
+    console.log(`[Legacy] Deck ${deck.id}:`, {
+      totalCards: deck.totalCards,
+      reviewCount: deck.reviewCount,
+      remainingReviews: deck.remainingReviews,
+      available: {
+        availableNewCards,
+        availableReviewCards
+      },
+      limits: {
+        newCardsRemaining,
+        reviewCardsRemaining,
+        newCardsCount,
+        newCardsLimit
+      }
+    });
   }
 }; 
