@@ -82,6 +82,10 @@ export const deckService = {
         // reviewCount should be the total number of cards ready for review
         deck.reviewCount = deckStats.reviewReadyCards;
         
+        // Set the new properties for new cards and due cards
+        deck.newCards = deckStats.newCards;
+        deck.dueCards = deckStats.dueReviewCards;
+        
         // Calculate remaining cards based on daily limits
         const newCardsRemaining = Math.max(0, newCardsLimit - reviewCounts.newCardsCount);
         const reviewCardsRemaining = Math.max(0, reviewCardsLimit - reviewCounts.reviewCardsCount);
@@ -105,6 +109,8 @@ export const deckService = {
         console.error(`Error calculating stats for deck ${deck.id}:`, error);
         deck.reviewCount = 0;
         deck.totalCards = 0;
+        deck.newCards = 0;
+        deck.dueCards = 0;
         deck.remainingReviews = 0;
       }
     }
@@ -114,6 +120,8 @@ export const deckService = {
       // Initialize properties if they're undefined
       deck.totalCards = deck.totalCards || 0;
       deck.reviewCount = deck.reviewCount || 0;
+      deck.newCards = deck.newCards || 0;
+      deck.dueCards = deck.dueCards || 0;
       deck.remainingReviews = deck.remainingReviews || 0;
       
       // Ensure reviewCount is not greater than totalCards
@@ -122,12 +130,21 @@ export const deckService = {
         deck.reviewCount = deck.totalCards;
       }
       
+      // Ensure newCards + dueCards = reviewCount
+      if (deck.newCards + deck.dueCards !== deck.reviewCount) {
+        console.warn(`Correcting invalid newCards/dueCards for deck ${deck.id}: ${deck.newCards} + ${deck.dueCards} != ${deck.reviewCount}`);
+        // Prioritize the sum of newCards and dueCards as the source of truth
+        deck.reviewCount = deck.newCards + deck.dueCards;
+      }
+      
       // NOTE: We do NOT limit remainingReviews by reviewCount
       // A user might still be able to review new cards even if all review cards are caught up
       
       // Ensure all values are non-negative
       deck.totalCards = Math.max(0, deck.totalCards);
       deck.reviewCount = Math.max(0, deck.reviewCount);
+      deck.newCards = Math.max(0, deck.newCards);
+      deck.dueCards = Math.max(0, deck.dueCards);
       deck.remainingReviews = Math.max(0, deck.remainingReviews);
     }
     
@@ -529,6 +546,10 @@ export const deckService = {
       console.error(`Error counting review cards for deck ${deck.id}:`, reviewError);
       throw reviewError;
     }
+    
+    // Set the new properties for new cards and due cards
+    deck.newCards = availableNewCards || 0;
+    deck.dueCards = availableReviewCards || 0;
     
     // Calculate effective remaining reviews (minimum of available cards and daily limit remaining)
     // If newCardsCount >= newCardsLimit, then no new cards should be available for review today

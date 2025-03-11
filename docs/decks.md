@@ -126,6 +126,8 @@ Authorization: Bearer <jwt-token>
         "createdAt": "2023-03-04T12:00:00Z",
         "updatedAt": "2023-03-04T12:00:00Z",
         "reviewCount": 5,
+        "newCards": 2,
+        "dueCards": 3,
         "totalCards": 20,
         "remainingReviews": 3
       },
@@ -138,6 +140,8 @@ Authorization: Bearer <jwt-token>
         "createdAt": "2023-03-05T10:30:00Z",
         "updatedAt": "2023-03-05T10:30:00Z",
         "reviewCount": 0,
+        "newCards": 0,
+        "dueCards": 0,
         "totalCards": 15,
         "remainingReviews": 0
       }
@@ -147,6 +151,8 @@ Authorization: Bearer <jwt-token>
 ```
 
 The `reviewCount` property indicates how many cards in the deck are ready for review (either new cards or cards with a due date in the past).
+The `newCards` property indicates how many cards in the deck are new (state = 0).
+The `dueCards` property indicates how many cards in the deck are NOT new and have a due date in the past (state > 0 and due <= now).
 The `totalCards` property shows the total number of cards in the deck.
 The `remainingReviews` property shows how many more cards the user can review today, taking into account both the user's daily limits and the actual availability of cards in the deck.
 
@@ -170,7 +176,12 @@ Authorization: Bearer <jwt-token>
       "slug": "javascript-basics",
       "description": "Flashcards for JavaScript fundamentals",
       "createdAt": "2023-03-04T12:00:00Z",
-      "updatedAt": "2023-03-04T12:00:00Z"
+      "updatedAt": "2023-03-04T12:00:00Z",
+      "reviewCount": 5,
+      "newCards": 2,
+      "dueCards": 3,
+      "totalCards": 20,
+      "remainingReviews": 3
     }
   }
 }
@@ -196,7 +207,12 @@ Authorization: Bearer <jwt-token>
       "slug": "javascript-basics",
       "description": "Flashcards for JavaScript fundamentals",
       "createdAt": "2023-03-04T12:00:00Z",
-      "updatedAt": "2023-03-04T12:00:00Z"
+      "updatedAt": "2023-03-04T12:00:00Z",
+      "reviewCount": 5,
+      "newCards": 2,
+      "dueCards": 3,
+      "totalCards": 20,
+      "remainingReviews": 3
     }
   }
 }
@@ -229,7 +245,12 @@ Authorization: Bearer <jwt-token>
       "slug": "javascript-basics",
       "description": "Flashcards for JavaScript fundamentals",
       "createdAt": "2023-03-04T12:00:00Z",
-      "updatedAt": "2023-03-04T12:00:00Z"
+      "updatedAt": "2023-03-04T12:00:00Z",
+      "reviewCount": 5,
+      "newCards": 2,
+      "dueCards": 3,
+      "totalCards": 20,
+      "remainingReviews": 3
     },
     "cards": [
       {
@@ -308,7 +329,12 @@ Authorization: Bearer <jwt-token>
       "slug": "javascript-basics",
       "description": "Flashcards for JavaScript fundamentals",
       "createdAt": "2023-03-04T12:00:00Z",
-      "updatedAt": "2023-03-04T12:00:00Z"
+      "updatedAt": "2023-03-04T12:00:00Z",
+      "reviewCount": 5,
+      "newCards": 2,
+      "dueCards": 3,
+      "totalCards": 20,
+      "remainingReviews": 3
     },
     "cards": [],
     "allCaughtUp": true,
@@ -337,7 +363,12 @@ Authorization: Bearer <jwt-token>
       "slug": "javascript-basics",
       "description": "Flashcards for JavaScript fundamentals",
       "createdAt": "2023-03-04T12:00:00Z",
-      "updatedAt": "2023-03-04T12:00:00Z"
+      "updatedAt": "2023-03-04T12:00:00Z",
+      "reviewCount": 5,
+      "newCards": 2,
+      "dueCards": 3,
+      "totalCards": 20,
+      "remainingReviews": 3
     },
     "cards": [],
     "emptyDeck": true,
