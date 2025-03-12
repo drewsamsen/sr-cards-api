@@ -17,7 +17,7 @@ export const cardController = {
     const offset = req.query.offset ? parseInt(req.query.offset as string, 10) : 0;
     
     // Validate pagination parameters
-    const validatedLimit = Math.min(Math.max(1, limit), 100); // Between 1 and 100
+    const validatedLimit = Math.min(Math.max(1, limit), 500); // Between 1 and 500 (increased from 100)
     const validatedOffset = Math.max(0, offset); // At least 0
     
     return {

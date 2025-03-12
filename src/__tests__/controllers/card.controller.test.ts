@@ -59,12 +59,12 @@ describe('Card Controller', () => {
       expect(result.offset).toBe(10);
     });
 
-    test('should cap limit to 100 if a larger value is provided', () => {
-      mockRequest.query = { limit: '200' };
+    test('should cap limit to 500 if a larger value is provided', () => {
+      mockRequest.query = { limit: '600' };
       
       const result = cardController._getPaginationParams(mockRequest as AuthenticatedRequest);
       
-      expect(result.limit).toBe(100);
+      expect(result.limit).toBe(500);
     });
 
     test('should set minimum limit to 1 if a smaller value is provided', () => {
