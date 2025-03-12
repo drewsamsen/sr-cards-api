@@ -52,8 +52,8 @@ export const deckService = {
     
     // Get user settings to check daily limits
     const userSettings = await userSettingsService.getUserSettings(userId);
-    const newCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
-    const reviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
+    const baseNewCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
+    const baseReviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
     
     // Fetch deck statistics in a single batch query
     const deckStatsMap = await cardReviewService.getDeckStatsBatch(deckIds, userId);
@@ -82,6 +82,11 @@ export const deckService = {
         // Set the new properties for new cards and due cards
         deck.newCards = deckStats.newCards;
         deck.dueCards = deckStats.dueReviewCards;
+        
+        // Apply daily scaler to the limits and floor the values
+        const dailyScaler = deck.dailyScaler || 1.0;
+        const newCardsLimit = Math.floor(baseNewCardsLimit * dailyScaler);
+        const reviewCardsLimit = Math.floor(baseReviewCardsLimit * dailyScaler);
         
         // Calculate remaining cards based on daily limits
         const newCardsRemaining = Math.max(0, newCardsLimit - reviewCounts.newCardsCount);
@@ -217,6 +222,7 @@ export const deckService = {
       user_id: userId,
       name: deckData.name,
       description: deckData.description || null,
+      daily_scaler: deckData.dailyScaler || 1.0
     };
 
     const { data, error } = await supabaseAdmin
@@ -248,6 +254,7 @@ export const deckService = {
     if (deckData.name !== undefined) updateData.name = deckData.name;
     if (deckData.description !== undefined) updateData.description = deckData.description;
     if (deckData.slug !== undefined) updateData.slug = deckData.slug;
+    if (deckData.dailyScaler !== undefined) updateData.daily_scaler = deckData.dailyScaler;
 
     const { data, error } = await supabaseAdmin
       .from('decks')
@@ -305,8 +312,14 @@ export const deckService = {
       console.warn(`[WARN] No user settings found for user ${userId}, using defaults`);
     }
     
-    const newCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
-    const reviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
+    // Get base limits from user settings
+    const baseNewCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
+    const baseReviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
+    
+    // Apply daily scaler to the limits and floor the values
+    const dailyScaler = deck.dailyScaler || 1.0;
+    const newCardsLimit = Math.floor(baseNewCardsLimit * dailyScaler);
+    const reviewCardsLimit = Math.floor(baseReviewCardsLimit * dailyScaler);
     
     // Get counts of cards reviewed in the last 24 hours in a single call
     const { newCardsCount, reviewCardsCount } = await logService.getReviewCounts({
@@ -478,8 +491,14 @@ export const deckService = {
       userSettings = await userSettingsService.getUserSettings(userId);
     }
     
-    const newCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
-    const reviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
+    // Get base limits from user settings
+    const baseNewCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
+    const baseReviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
+    
+    // Apply daily scaler to the limits and floor the values
+    const dailyScaler = deck.dailyScaler || 1.0;
+    const newCardsLimit = Math.floor(baseNewCardsLimit * dailyScaler);
+    const reviewCardsLimit = Math.floor(baseReviewCardsLimit * dailyScaler);
     
     // Get count of total cards
     deck.totalCards = await cardReviewService.countTotalCards(deck.id, userId);

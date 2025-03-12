@@ -73,7 +73,7 @@ export const deckController = {
    */
   createDeck: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
-    const { name, description } = req.body;
+    const { name, description, dailyScaler } = req.body;
 
     if (!name) {
       return res.status(400).json({
@@ -86,6 +86,18 @@ export const deckController = {
       name,
       description,
     };
+
+    // Add dailyScaler if provided and valid
+    if (dailyScaler !== undefined) {
+      const scalerValue = parseFloat(dailyScaler);
+      if (isNaN(scalerValue) || scalerValue <= 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Daily scaler must be a positive number',
+        });
+      }
+      deckData.dailyScaler = scalerValue;
+    }
 
     const deck = await deckService.createDeck(deckData, userId);
 
@@ -103,9 +115,9 @@ export const deckController = {
   updateDeck: asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
     const deckId = req.params.id;
-    const { name, description, slug } = req.body;
+    const { name, description, slug, dailyScaler } = req.body;
 
-    if (!name && description === undefined && !slug) {
+    if (!name && description === undefined && !slug && dailyScaler === undefined) {
       return res.status(400).json({
         status: 'error',
         message: 'At least one field to update is required',
@@ -116,6 +128,17 @@ export const deckController = {
     if (name !== undefined) deckData.name = name;
     if (description !== undefined) deckData.description = description;
     if (slug !== undefined) deckData.slug = slug;
+    if (dailyScaler !== undefined) {
+      // Validate dailyScaler is a positive number
+      const scalerValue = parseFloat(dailyScaler);
+      if (isNaN(scalerValue) || scalerValue <= 0) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Daily scaler must be a positive number',
+        });
+      }
+      deckData.dailyScaler = scalerValue;
+    }
 
     const deck = await deckService.updateDeck(deckId, deckData, userId);
 

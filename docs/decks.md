@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS public.decks (
   name TEXT NOT NULL,
   slug TEXT UNIQUE,
   description TEXT,
+  daily_scaler DECIMAL NOT NULL DEFAULT 1.0 CHECK (daily_scaler > 0),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE(user_id, name)
@@ -26,6 +27,7 @@ Key features:
 - Decks belong to a user (referenced by `user_id`)
 - Deck names must be unique per user (enforced by the `UNIQUE(user_id, name)` constraint)
 - Slugs are automatically generated for URL-friendly access
+- Daily scaler adjusts the user's daily review and new card limits for this specific deck
 - Timestamps track creation and update times
 
 ## Automatic Slug Generation
@@ -88,6 +90,20 @@ The following indexes are created for better performance:
 
 - Index on `user_id` for faster queries when retrieving a user's decks
 - Index on `slug` for faster lookups when accessing decks by slug
+
+## Daily Scaler
+
+The `dailyScaler` property allows users to adjust the daily review and new card limits for specific decks:
+
+- Values less than 1.0 reduce the limits (for difficult decks)
+- Values greater than 1.0 increase the limits (for easy decks)
+- The default value is 1.0 (no adjustment)
+
+For example, if a user's settings specify 10 new cards per day and 20 reviews per day:
+- A deck with `dailyScaler: 0.5` would allow 5 new cards and 10 reviews per day
+- A deck with `dailyScaler: 2.0` would allow 20 new cards and 40 reviews per day
+
+The system floors the calculated values, so a `dailyScaler` of 0.5 with a limit of 5 would result in 2 cards (not 2.5).
 
 ## API Endpoints
 
@@ -169,6 +185,7 @@ Authorization: Bearer <jwt-token>
       "name": "JavaScript Basics",
       "slug": "javascript-basics",
       "description": "Flashcards for JavaScript fundamentals",
+      "dailyScaler": 1.0,
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-04T12:00:00Z",
       "newCards": 2,
@@ -199,6 +216,7 @@ Authorization: Bearer <jwt-token>
       "name": "JavaScript Basics",
       "slug": "javascript-basics",
       "description": "Flashcards for JavaScript fundamentals",
+      "dailyScaler": 1.0,
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-04T12:00:00Z",
       "newCards": 2,
@@ -236,6 +254,7 @@ Authorization: Bearer <jwt-token>
       "name": "JavaScript Basics",
       "slug": "javascript-basics",
       "description": "Flashcards for JavaScript fundamentals",
+      "dailyScaler": 1.0,
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-04T12:00:00Z",
       "newCards": 2,
@@ -319,6 +338,7 @@ Authorization: Bearer <jwt-token>
       "name": "JavaScript Basics",
       "slug": "javascript-basics",
       "description": "Flashcards for JavaScript fundamentals",
+      "dailyScaler": 1.0,
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-04T12:00:00Z",
       "newCards": 2,
@@ -352,6 +372,7 @@ Authorization: Bearer <jwt-token>
       "name": "JavaScript Basics",
       "slug": "javascript-basics",
       "description": "Flashcards for JavaScript fundamentals",
+      "dailyScaler": 1.0,
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-04T12:00:00Z",
       "newCards": 2,
@@ -398,7 +419,8 @@ Authorization: Bearer <jwt-token>
 
 {
   "name": "JavaScript Basics",
-  "description": "Flashcards for JavaScript fundamentals"
+  "description": "Flashcards for JavaScript fundamentals",
+  "dailyScaler": 1.5
 }
 ```
 
@@ -413,6 +435,7 @@ Authorization: Bearer <jwt-token>
       "name": "JavaScript Basics",
       "slug": "javascript-basics",
       "description": "Flashcards for JavaScript fundamentals",
+      "dailyScaler": 1.5,
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-04T12:00:00Z"
     }
@@ -431,7 +454,8 @@ Authorization: Bearer <jwt-token>
 {
   "name": "JavaScript Fundamentals",
   "description": "Updated description for JavaScript fundamentals",
-  "slug": "js-fundamentals"
+  "slug": "js-fundamentals",
+  "dailyScaler": 0.5
 }
 ```
 
@@ -446,6 +470,7 @@ Authorization: Bearer <jwt-token>
       "name": "JavaScript Fundamentals",
       "slug": "js-fundamentals",
       "description": "Updated description for JavaScript fundamentals",
+      "dailyScaler": 0.5,
       "createdAt": "2023-03-04T12:00:00Z",
       "updatedAt": "2023-03-06T09:15:00Z"
     }

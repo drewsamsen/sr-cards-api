@@ -15,7 +15,7 @@ jest.mock('../../services/deck.service');
 describe('Deck Controller', () => {
   let mockRequest: Partial<AuthenticatedRequest>;
   let mockResponse: Partial<Response>;
-  let responseObject = {};
+  let responseObject: any = {};
 
   beforeEach(() => {
     // Reset mocks
@@ -58,7 +58,8 @@ describe('Deck Controller', () => {
       const mockDeck = {
         id: 'deck-1',
         name: 'Test Deck',
-        slug: 'test-deck'
+        slug: 'test-deck',
+        dailyScaler: 1.0
       };
       
       const mockDailyProgress = {
@@ -104,7 +105,8 @@ describe('Deck Controller', () => {
       const mockDeck = {
         id: 'deck-1',
         name: 'Test Deck',
-        slug: 'test-deck'
+        slug: 'test-deck',
+        dailyScaler: 1.0
       };
       
       const mockDailyProgress = {
@@ -183,7 +185,8 @@ describe('Deck Controller', () => {
       const mockDeck = {
         id: 'deck-1',
         name: 'Test Deck',
-        slug: 'test-deck'
+        slug: 'test-deck',
+        dailyScaler: 1.0
       };
       
       const mockDailyProgress = {
@@ -330,7 +333,8 @@ describe('Deck Controller', () => {
       const mockDeck = {
         id: 'deck-1',
         name: 'Test Deck',
-        slug: 'test-deck'
+        slug: 'test-deck',
+        dailyScaler: 1.0
       };
       
       const mockDailyProgress = {
@@ -368,6 +372,170 @@ describe('Deck Controller', () => {
           cards: mockCards,
           dailyProgress: mockDailyProgress
         }
+      });
+    });
+  });
+
+  describe('getDeckById', () => {
+    test('should return a deck with dailyScaler when found', async () => {
+      // Mock request with deck ID
+      mockRequest = {
+        params: { id: 'deck-1' },
+        user: { id: 'test-user-id' }
+      };
+      
+      // Mock the service to return a deck
+      const mockDeck = {
+        id: 'deck-1',
+        userId: 'test-user-id',
+        name: 'Test Deck',
+        slug: 'test-deck',
+        description: 'Test description',
+        dailyScaler: 1.5,
+        createdAt: '2023-01-01T00:00:00Z',
+        updatedAt: '2023-01-01T00:00:00Z',
+        totalCards: 20,
+        newCards: 5,
+        dueCards: 3,
+        remainingReviews: 8
+      };
+      
+      (deckService.getDeckById as jest.Mock).mockResolvedValue(mockDeck);
+      
+      // Call the controller method
+      await deckController.getDeckById(
+        mockRequest as AuthenticatedRequest,
+        mockResponse as Response,
+        jest.fn() // Next function
+      );
+      
+      // Assertions
+      expect(deckService.getDeckById).toHaveBeenCalledWith(
+        'deck-1',
+        'test-user-id'
+      );
+      
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(responseObject).toEqual({
+        status: 'success',
+        data: {
+          deck: mockDeck
+        }
+      });
+      
+      // Specifically check for dailyScaler
+      expect(responseObject.data.deck.dailyScaler).toBe(1.5);
+    });
+    
+    test('should return 404 when deck is not found', async () => {
+      // Mock request with deck ID
+      mockRequest = {
+        params: { id: 'non-existent-deck' },
+        user: { id: 'test-user-id' }
+      };
+      
+      // Mock the service to return null (deck not found)
+      (deckService.getDeckById as jest.Mock).mockResolvedValue(null);
+      
+      // Call the controller method
+      await deckController.getDeckById(
+        mockRequest as AuthenticatedRequest,
+        mockResponse as Response,
+        jest.fn() // Next function
+      );
+      
+      // Assertions
+      expect(deckService.getDeckById).toHaveBeenCalledWith(
+        'non-existent-deck',
+        'test-user-id'
+      );
+      
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+      expect(responseObject).toEqual({
+        status: 'error',
+        message: 'Deck not found'
+      });
+    });
+  });
+  
+  describe('getDeckBySlug', () => {
+    test('should return a deck with dailyScaler when found', async () => {
+      // Mock request with deck slug
+      mockRequest = {
+        params: { slug: 'test-deck' },
+        user: { id: 'test-user-id' }
+      };
+      
+      // Mock the service to return a deck
+      const mockDeck = {
+        id: 'deck-1',
+        userId: 'test-user-id',
+        name: 'Test Deck',
+        slug: 'test-deck',
+        description: 'Test description',
+        dailyScaler: 0.8,
+        createdAt: '2023-01-01T00:00:00Z',
+        updatedAt: '2023-01-01T00:00:00Z',
+        totalCards: 20,
+        newCards: 5,
+        dueCards: 3,
+        remainingReviews: 8
+      };
+      
+      (deckService.getDeckBySlug as jest.Mock).mockResolvedValue(mockDeck);
+      
+      // Call the controller method
+      await deckController.getDeckBySlug(
+        mockRequest as AuthenticatedRequest,
+        mockResponse as Response,
+        jest.fn() // Next function
+      );
+      
+      // Assertions
+      expect(deckService.getDeckBySlug).toHaveBeenCalledWith(
+        'test-deck',
+        'test-user-id'
+      );
+      
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(responseObject).toEqual({
+        status: 'success',
+        data: {
+          deck: mockDeck
+        }
+      });
+      
+      // Specifically check for dailyScaler
+      expect(responseObject.data.deck.dailyScaler).toBe(0.8);
+    });
+    
+    test('should return 404 when deck is not found', async () => {
+      // Mock request with deck slug
+      mockRequest = {
+        params: { slug: 'non-existent-deck' },
+        user: { id: 'test-user-id' }
+      };
+      
+      // Mock the service to return null (deck not found)
+      (deckService.getDeckBySlug as jest.Mock).mockResolvedValue(null);
+      
+      // Call the controller method
+      await deckController.getDeckBySlug(
+        mockRequest as AuthenticatedRequest,
+        mockResponse as Response,
+        jest.fn() // Next function
+      );
+      
+      // Assertions
+      expect(deckService.getDeckBySlug).toHaveBeenCalledWith(
+        'non-existent-deck',
+        'test-user-id'
+      );
+      
+      expect(mockResponse.status).toHaveBeenCalledWith(404);
+      expect(responseObject).toEqual({
+        status: 'error',
+        message: 'Deck not found'
       });
     });
   });

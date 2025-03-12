@@ -47,6 +47,7 @@ describe('Deck Service', () => {
                   name: 'Test Deck 1',
                   slug: 'test-deck-1',
                   description: 'Test description 1',
+                  daily_scaler: 1.0,
                   created_at: '2023-01-01T00:00:00Z',
                   updated_at: '2023-01-01T00:00:00Z'
                 },
@@ -56,6 +57,7 @@ describe('Deck Service', () => {
                   name: 'Test Deck 2',
                   slug: 'test-deck-2',
                   description: 'Test description 2',
+                  daily_scaler: 1.0,
                   created_at: '2023-01-02T00:00:00Z',
                   updated_at: '2023-01-02T00:00:00Z'
                 }
@@ -163,6 +165,7 @@ describe('Deck Service', () => {
                   name: 'Test Deck 1',
                   slug: 'test-deck-1',
                   description: 'Test description 1',
+                  daily_scaler: 1.0,
                   created_at: '2023-01-01T00:00:00Z',
                   updated_at: '2023-01-01T00:00:00Z'
                 }
@@ -249,6 +252,7 @@ describe('Deck Service', () => {
                   name: 'Test Deck 1',
                   slug: 'test-deck-1',
                   description: 'Test description 1',
+                  daily_scaler: 1.0,
                   created_at: '2023-01-01T00:00:00Z',
                   updated_at: '2023-01-01T00:00:00Z'
                 }
@@ -321,6 +325,135 @@ describe('Deck Service', () => {
       expect(result[0].dueCards).toBe(30);
       expect(result[0].remainingReviews).toBe(0); // Daily limits reached for both new and review cards
     });
+
+    test('should apply daily scaler correctly when calculating remainingReviews', async () => {
+      // Mock supabase to return decks with different daily scalers
+      (supabaseAdmin.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            order: jest.fn().mockResolvedValue({
+              data: [
+                {
+                  id: 'deck-1',
+                  user_id: 'test-user-id',
+                  name: 'Test Deck 1',
+                  slug: 'test-deck-1',
+                  description: 'Test description 1',
+                  daily_scaler: 0.5, // Half the normal limits
+                  created_at: '2023-01-01T00:00:00Z',
+                  updated_at: '2023-01-01T00:00:00Z'
+                },
+                {
+                  id: 'deck-2',
+                  user_id: 'test-user-id',
+                  name: 'Test Deck 2',
+                  slug: 'test-deck-2',
+                  description: 'Test description 2',
+                  daily_scaler: 2.0, // Double the normal limits
+                  created_at: '2023-01-02T00:00:00Z',
+                  updated_at: '2023-01-02T00:00:00Z'
+                }
+              ],
+              error: null
+            })
+          })
+        })
+      });
+
+      // Mock user settings
+      (userSettingsService.getUserSettings as jest.Mock).mockResolvedValue({
+        id: 'settings-1',
+        userId: 'test-user-id',
+        createdAt: '2023-01-01T00:00:00Z',
+        updatedAt: '2023-01-01T00:00:00Z',
+        settings: {
+          theme: 'light',
+          showAnswerTimer: true,
+          notifications: {
+            enabled: true,
+            reminderTime: '09:00',
+            reminderDays: ['monday', 'wednesday', 'friday']
+          },
+          learning: {
+            newCardsPerDay: 10,
+            maxReviewsPerDay: 20
+          },
+          fsrsParams: {
+            w: [0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61],
+            requestRetention: 0.9,
+            maximumInterval: 36500,
+            enableFuzz: true,
+            enableShortTerm: true
+          }
+        }
+      });
+
+      // Mock deck stats - same for both decks
+      (cardReviewService.getDeckStatsBatch as jest.Mock).mockResolvedValue(
+        new Map([
+          ['deck-1', {
+            deckId: 'deck-1',
+            totalCards: 50,
+            reviewReadyCards: 15,
+            newCards: 10,
+            dueReviewCards: 10
+          }],
+          ['deck-2', {
+            deckId: 'deck-2',
+            totalCards: 50,
+            reviewReadyCards: 15,
+            newCards: 10,
+            dueReviewCards: 10
+          }]
+        ])
+      );
+
+      // Mock review counts - same for both decks
+      (logService.getReviewCountsBatch as jest.Mock).mockResolvedValue(
+        new Map([
+          ['deck-1', {
+            deckId: 'deck-1',
+            newCardsCount: 2,
+            reviewCardsCount: 5
+          }],
+          ['deck-2', {
+            deckId: 'deck-2',
+            newCardsCount: 2,
+            reviewCardsCount: 5
+          }]
+        ])
+      );
+
+      const result = await deckService.getAllDecks('test-user-id');
+      
+      // Verify the result
+      expect(result).toHaveLength(2);
+      
+      // Check first deck with daily_scaler = 0.5
+      expect(result[0].id).toBe('deck-1');
+      expect(result[0].dailyScaler).toBe(0.5);
+      expect(result[0].totalCards).toBe(50);
+      expect(result[0].newCards).toBe(10);
+      expect(result[0].dueCards).toBe(10);
+      
+      // With daily_scaler = 0.5, newCardsLimit = 5 (10 * 0.5), reviewCardsLimit = 10 (20 * 0.5)
+      // newCardsRemaining = 5 - 2 = 3, reviewCardsRemaining = 10 - 5 = 5
+      // So remainingReviews should be 3 + 5 = 8
+      expect(result[0].remainingReviews).toBe(8);
+      
+      // Check second deck with daily_scaler = 2.0
+      expect(result[1].id).toBe('deck-2');
+      expect(result[1].dailyScaler).toBe(2.0);
+      expect(result[1].totalCards).toBe(50);
+      expect(result[1].newCards).toBe(10);
+      expect(result[1].dueCards).toBe(10);
+      
+      // With daily_scaler = 2.0, newCardsLimit = 20 (10 * 2.0), reviewCardsLimit = 40 (20 * 2.0)
+      // newCardsRemaining = 20 - 2 = 18, reviewCardsRemaining = 40 - 5 = 35
+      // But we only have 10 new cards and 10 due cards available
+      // So remainingReviews should be 10 + 10 = 20
+      expect(result[1].remainingReviews).toBe(20);
+    });
   });
 
   describe('_addDeckStats', () => {
@@ -332,6 +465,7 @@ describe('Deck Service', () => {
         name: 'Test Deck',
         slug: 'test-deck',
         description: 'Test description',
+        dailyScaler: 1.0,
         createdAt: '2023-01-01T00:00:00Z',
         updatedAt: '2023-01-01T00:00:00Z'
       };
@@ -425,6 +559,113 @@ describe('Deck Service', () => {
       expect(mockDeck.newCards).toBe(5);
       expect(mockDeck.dueCards).toBe(10);
       expect(mockDeck.remainingReviews).toBe(15); // 7 new cards (limit 10-3) + 10 review cards (limit 20-7, but only 10 due)
+    });
+
+    test('should apply daily scaler correctly when calculating remainingReviews', async () => {
+      // Create a mock deck with a daily scaler of 0.5
+      const mockDeck: Deck = {
+        id: 'deck-1',
+        userId: 'test-user-id',
+        name: 'Test Deck',
+        slug: 'test-deck',
+        description: 'Test description',
+        dailyScaler: 0.5, // Half the normal limits
+        createdAt: '2023-01-01T00:00:00Z',
+        updatedAt: '2023-01-01T00:00:00Z'
+      };
+
+      // Mock user settings
+      const mockUserSettings: UserSettings = {
+        id: 'settings-1',
+        userId: 'test-user-id',
+        createdAt: '2023-01-01T00:00:00Z',
+        updatedAt: '2023-01-01T00:00:00Z',
+        settings: {
+          theme: 'light',
+          showAnswerTimer: true,
+          notifications: {
+            enabled: true,
+            reminderTime: '09:00',
+            reminderDays: ['monday', 'wednesday', 'friday']
+          },
+          learning: {
+            newCardsPerDay: 10,
+            maxReviewsPerDay: 20
+          },
+          fsrsParams: {
+            w: [0.4, 0.6, 2.4, 5.8, 4.93, 0.94, 0.86, 0.01, 1.49, 0.14, 0.94, 2.18, 0.05, 0.34, 1.26, 0.29, 2.61],
+            requestRetention: 0.9,
+            maximumInterval: 36500,
+            enableFuzz: true,
+            enableShortTerm: true
+          }
+        }
+      };
+
+      // Mock card review service
+      (cardReviewService.countTotalCards as jest.Mock).mockResolvedValue(50);
+
+      // Mock log service
+      (logService.getReviewCounts as jest.Mock).mockResolvedValue({
+        newCardsCount: 2,
+        reviewCardsCount: 5
+      });
+
+      // Mock supabase for new cards count and due review cards count
+      let queryCount = 0;
+      (supabaseAdmin.from as jest.Mock).mockImplementation(() => {
+        return {
+          select: jest.fn().mockReturnValue({
+            eq: jest.fn().mockImplementation((field, value) => {
+              queryCount++;
+              
+              // First query - new cards
+              if (queryCount === 1) {
+                return {
+                  eq: jest.fn().mockImplementation((field2, value2) => {
+                    return {
+                      eq: jest.fn().mockResolvedValue({
+                        count: 10,
+                        error: null
+                      })
+                    };
+                  })
+                };
+              } 
+              // Second query - due review cards
+              else {
+                return {
+                  eq: jest.fn().mockImplementation((field2, value2) => {
+                    return {
+                      gt: jest.fn().mockImplementation((field3, value3) => {
+                        return {
+                          lte: jest.fn().mockResolvedValue({
+                            count: 10,
+                            error: null
+                          })
+                        };
+                      })
+                    };
+                  })
+                };
+              }
+            })
+          })
+        };
+      });
+
+      // Call the method
+      await deckService._addDeckStats(mockDeck, 'test-user-id', mockUserSettings);
+
+      // Verify the result
+      expect(mockDeck.totalCards).toBe(50);
+      expect(mockDeck.newCards).toBe(10);
+      expect(mockDeck.dueCards).toBe(10);
+      
+      // With daily_scaler = 0.5, newCardsLimit = 5 (10 * 0.5), reviewCardsLimit = 10 (20 * 0.5)
+      // newCardsRemaining = 5 - 2 = 3, reviewCardsRemaining = 10 - 5 = 5
+      // So remainingReviews should be 3 + 5 = 8
+      expect(mockDeck.remainingReviews).toBe(8);
     });
   });
 }); 

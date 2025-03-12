@@ -7,6 +7,7 @@ export interface DeckDB {
   description: string | null;
   created_at: string;
   updated_at: string;
+  daily_scaler: number;
 }
 
 // API model (uses JavaScript camelCase convention)
@@ -18,6 +19,7 @@ export interface Deck {
   description: string | null;
   createdAt: string;
   updatedAt: string;
+  dailyScaler: number;
   newCards?: number;    // Number of new cards in the deck
   dueCards?: number;    // Number of cards due for review (not new, with due date in the past)
   totalCards?: number;  // Total number of cards in the deck
@@ -28,10 +30,12 @@ export interface Deck {
 export interface CreateDeckDTO {
   name: string;
   description?: string;
+  dailyScaler?: number;
 }
 
 export interface UpdateDeckDTO {
   name?: string;
   description?: string;
   slug?: string;
+  dailyScaler?: number;
 } 
