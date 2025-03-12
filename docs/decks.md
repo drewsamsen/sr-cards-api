@@ -13,11 +13,12 @@ CREATE TABLE IF NOT EXISTS public.decks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  slug TEXT UNIQUE,
+  slug TEXT,
   description TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE(user_id, name)
+  UNIQUE(user_id, name),
+  UNIQUE(user_id, slug)
 );
 ```
 
@@ -25,6 +26,7 @@ Key features:
 - Each deck has a unique ID
 - Decks belong to a user (referenced by `user_id`)
 - Deck names must be unique per user (enforced by the `UNIQUE(user_id, name)` constraint)
+- Deck slugs must be unique per user (enforced by the `UNIQUE(user_id, slug)` constraint)
 - Slugs are automatically generated for URL-friendly access
 - Timestamps track creation and update times
 
@@ -36,13 +38,13 @@ When a deck is created, a slug is automatically generated if not provided:
 2. Special characters are removed
 3. Spaces are replaced with hyphens
 4. The text is converted to lowercase
-5. If a slug already exists, a number is appended to ensure uniqueness
+5. If a slug already exists for the same user, a number is appended to ensure uniqueness per user
 
 This is handled by the following trigger and functions:
 
 ```sql
 -- Function to generate a slug from the deck name
-CREATE OR REPLACE FUNCTION public.generate_slug(name TEXT)
+CREATE OR REPLACE FUNCTION public.generate_slug(name TEXT, user_id UUID)
 RETURNS TEXT AS $$
 DECLARE
   base_slug TEXT;
@@ -56,8 +58,8 @@ BEGIN
   -- Initial attempt with the base slug
   final_slug := base_slug;
   
-  -- Check if slug exists and append counter if needed
-  WHILE EXISTS (SELECT 1 FROM public.decks WHERE slug = final_slug) LOOP
+  -- Check if slug exists for this user and append counter if needed
+  WHILE EXISTS (SELECT 1 FROM public.decks WHERE slug = final_slug AND user_id = user_id) LOOP
     counter := counter + 1;
     final_slug := base_slug || '-' || counter;
   END LOOP;
@@ -87,7 +89,7 @@ Row Level Security (RLS) is enabled on the decks table with the following polici
 The following indexes are created for better performance:
 
 - Index on `user_id` for faster queries when retrieving a user's decks
-- Index on `slug` for faster lookups when accessing decks by slug
+- Composite index on `(user_id, slug)` for faster lookups when accessing decks by slug
 
 ## API Endpoints
 
@@ -474,6 +476,7 @@ Authorization: Bearer <jwt-token>
 ## Implementation Notes
 
 - Deck names must be unique per user
+- Deck slugs must be unique per user (different users can have decks with the same slug)
 - Slugs are automatically generated from the deck name when a deck is created
 - Slugs can be manually updated when updating a deck
 - The `updated_at` timestamp is automatically updated when a deck is modified
