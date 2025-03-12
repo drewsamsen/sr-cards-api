@@ -743,28 +743,22 @@ export const csvService = {
   },
   
   /**
-   * Check if two texts are fuzzy matches using Levenshtein distance
+   * Check if two texts are fuzzy matches
    * @param text1 First text
    * @param text2 Second text
    * @returns Whether the texts are fuzzy matches
    */
   isFuzzyMatch(text1: string, text2: string): boolean {
-    // Only check if the lengths are reasonably close to avoid unnecessary computation
-    if (Math.abs(text1.length - text2.length) > 3) {
-      return false;
-    }
-    
-    // For very short strings, require exact match
-    if (text1.length <= 3 || text2.length <= 3) {
+    // For very short strings, only exact matches count
+    if (text1.length < 3 || text2.length < 3) {
       return text1 === text2;
     }
     
-    // For longer strings, use Levenshtein distance
-    // Use a more conservative threshold for fuzzy matching
-    const distance = cardService.levenshteinDistance(text1, text2);
-    const threshold = Math.min(2, Math.floor(text1.length * 0.15)); // 15% of length or at most 2
-    
-    return distance <= threshold;
+    // Simple approach: check if one text contains the other
+    // or if they're exactly the same after normalization
+    return text1 === text2 || 
+           text1.includes(text2) || 
+           text2.includes(text1);
   },
 
   /**

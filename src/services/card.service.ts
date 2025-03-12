@@ -227,17 +227,6 @@ export const cardService = {
           return true;
         }
         
-        // Levenshtein distance for fuzzy matching (for very similar text)
-        // Only check if the lengths are reasonably close to avoid unnecessary computation
-        if (Math.abs(simplifiedCardFront.length - simplifiedFront.length) <= 3) {
-          const distance = this.levenshteinDistance(simplifiedCardFront, simplifiedFront);
-          // If the strings are very similar (distance is small relative to length)
-          const threshold = Math.max(2, Math.floor(simplifiedFront.length * 0.2)); // 20% of length or at least 2
-          if (distance <= threshold) {
-            return true;
-          }
-        }
-        
         return false;
       });
       
@@ -250,42 +239,6 @@ export const cardService = {
       console.error('Error finding similar card front:', error);
       return null; // Return null on error to allow card creation to proceed
     }
-  },
-  
-  /**
-   * Calculate Levenshtein distance between two strings
-   * @param a First string
-   * @param b Second string
-   * @returns The Levenshtein distance
-   */
-  levenshteinDistance(a: string, b: string): number {
-    const matrix: number[][] = [];
-    
-    // Initialize the matrix
-    for (let i = 0; i <= b.length; i++) {
-      matrix[i] = [i];
-    }
-    
-    for (let j = 0; j <= a.length; j++) {
-      matrix[0][j] = j;
-    }
-    
-    // Fill the matrix
-    for (let i = 1; i <= b.length; i++) {
-      for (let j = 1; j <= a.length; j++) {
-        if (b.charAt(i - 1) === a.charAt(j - 1)) {
-          matrix[i][j] = matrix[i - 1][j - 1];
-        } else {
-          matrix[i][j] = Math.min(
-            matrix[i - 1][j - 1] + 1, // substitution
-            matrix[i][j - 1] + 1,     // insertion
-            matrix[i - 1][j] + 1      // deletion
-          );
-        }
-      }
-    }
-    
-    return matrix[b.length][a.length];
   },
 
   /**

@@ -397,4 +397,205 @@ describe('Card Service', () => {
       expect(cardService).toHaveProperty('searchCards');
     });
   });
+
+  describe('findSimilarCardFront', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('should NOT flag cards with similar but distinct content as duplicates', async () => {
+      // Mock the database query to return some cards
+      const mockCards = [
+        {
+          id: 'card-1',
+          user_id: 'user-1',
+          deck_id: 'deck-1',
+          front: "Dad's Birthday",
+          back: 'June 15'
+        }
+      ];
+      
+      // Mock Supabase response
+      const mockResponse = { data: mockCards, error: null };
+      
+      // Setup the mock implementation
+      jest.spyOn(supabaseAdmin, 'from').mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockResolvedValue(mockResponse)
+          })
+        })
+      } as any);
+
+      // Test with similar but distinct text
+      const result = await cardService.findSimilarCardFront("Brad's Birthday", 'deck-1', 'user-1');
+      
+      // This should return null because "Dad's Birthday" and "Brad's Birthday" 
+      // should not be considered duplicates
+      expect(result).toBeNull();
+    });
+
+    it('should correctly identify exact duplicate cards', async () => {
+      // Mock the database query to return some cards
+      const mockCards = [
+        {
+          id: 'card-1',
+          user_id: 'user-1',
+          deck_id: 'deck-1',
+          front: 'What is JavaScript?',
+          back: 'A programming language'
+        }
+      ];
+      
+      // Mock Supabase response
+      const mockResponse = { data: mockCards, error: null };
+      
+      // Setup the mock implementation
+      jest.spyOn(supabaseAdmin, 'from').mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockResolvedValue(mockResponse)
+          })
+        })
+      } as any);
+
+      // Test with exact same text
+      const result = await cardService.findSimilarCardFront('What is JavaScript?', 'deck-1', 'user-1');
+      
+      // This should find the duplicate
+      expect(result).not.toBeNull();
+      expect(result?.front).toBe('What is JavaScript?');
+    });
+
+    it('should correctly identify cards with only punctuation/case differences', async () => {
+      // Mock the database query to return some cards
+      const mockCards = [
+        {
+          id: 'card-1',
+          user_id: 'user-1',
+          deck_id: 'deck-1',
+          front: 'What is JavaScript?',
+          back: 'A programming language'
+        }
+      ];
+      
+      // Mock Supabase response
+      const mockResponse = { data: mockCards, error: null };
+      
+      // Setup the mock implementation
+      jest.spyOn(supabaseAdmin, 'from').mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockResolvedValue(mockResponse)
+          })
+        })
+      } as any);
+
+      // Test with same text but different punctuation/case
+      const result = await cardService.findSimilarCardFront('what is javascript', 'deck-1', 'user-1');
+      
+      // This should find the duplicate despite different case and punctuation
+      expect(result).not.toBeNull();
+      expect(result?.front).toBe('What is JavaScript?');
+    });
+
+    it('should NOT flag cards with different names as duplicates', async () => {
+      // Mock the database query to return some cards
+      const mockCards = [
+        {
+          id: 'card-1',
+          user_id: 'user-1',
+          deck_id: 'deck-1',
+          front: 'Capital of France',
+          back: 'Paris'
+        }
+      ];
+      
+      // Mock Supabase response
+      const mockResponse = { data: mockCards, error: null };
+      
+      // Setup the mock implementation
+      jest.spyOn(supabaseAdmin, 'from').mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockResolvedValue(mockResponse)
+          })
+        })
+      } as any);
+
+      // Test with completely different text
+      const result = await cardService.findSimilarCardFront('Capital of Italy', 'deck-1', 'user-1');
+      
+      // This should not find a duplicate
+      expect(result).toBeNull();
+    });
+
+    it('should identify cards with different whitespace as duplicates', async () => {
+      // Mock the database query to return some cards
+      const mockCards = [
+        {
+          id: 'card-1',
+          user_id: 'user-1',
+          deck_id: 'deck-1',
+          front: 'JavaScript   is awesome',
+          back: 'A programming language'
+        }
+      ];
+      
+      // Mock Supabase response
+      const mockResponse = { data: mockCards, error: null };
+      
+      // Setup the mock implementation
+      jest.spyOn(supabaseAdmin, 'from').mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockResolvedValue(mockResponse)
+          })
+        })
+      } as any);
+
+      // Test with different whitespace
+      const result = await cardService.findSimilarCardFront('JavaScript is awesome', 'deck-1', 'user-1');
+      
+      // This should find the duplicate despite different whitespace
+      expect(result).not.toBeNull();
+      expect(result?.front).toBe('JavaScript   is awesome');
+    });
+
+    it('should handle edge cases with short texts', async () => {
+      // Mock the database query to return some cards
+      const mockCards = [
+        {
+          id: 'card-1',
+          user_id: 'user-1',
+          deck_id: 'deck-1',
+          front: 'CSS',
+          back: 'Cascading Style Sheets'
+        }
+      ];
+      
+      // Mock Supabase response
+      const mockResponse = { data: mockCards, error: null };
+      
+      // Setup the mock implementation
+      jest.spyOn(supabaseAdmin, 'from').mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            eq: jest.fn().mockResolvedValue(mockResponse)
+          })
+        })
+      } as any);
+
+      // Test with short text
+      const result = await cardService.findSimilarCardFront('CSS', 'deck-1', 'user-1');
+      
+      // This should find the duplicate
+      expect(result).not.toBeNull();
+      expect(result?.front).toBe('CSS');
+    });
+  });
 }); 
