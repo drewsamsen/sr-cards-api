@@ -11,6 +11,15 @@ import { userSettingsService } from './user-settings.service';
 // Set to true to enable debug logging
 const DEBUG = process.env.NODE_ENV === 'development';
 
+// Default FSRS parameters to use as fallback
+const DEFAULT_FSRS_PARAMS = {
+  request_retention: 0.9,
+  maximum_interval: 365 * 2, // 2 years
+  w: [0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192, 1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621],
+  enable_fuzz: false,
+  enable_short_term: true
+};
+
 // Define the review metrics interface
 export interface ReviewMetrics {
   again: Date;
@@ -101,12 +110,11 @@ export const fsrsService = {
    * @param userId Optional user ID to get user-specific FSRS parameters
    */
   async getFSRS(userId?: string): Promise<FSRS> {
-    // If no userId provided, use default parameters
+    // If no userId provided, log a detailed error but use default parameters
     if (!userId) {
-      return new FSRS({
-        request_retention: 0.9,
-        maximum_interval: 365 * 2, // 2 years
-      });
+      console.error('[ERROR] getFSRS called without a user ID. This should never happen. Stack trace:', new Error().stack);
+      // Use default parameters as a fallback
+      return new FSRS(generatorParameters(DEFAULT_FSRS_PARAMS));
     }
 
     // Check if we have a cached FSRS instance for this user
@@ -118,12 +126,28 @@ export const fsrsService = {
     }
 
     try {
-      // Get user settings
+      // Get user settings with detailed logging
+      console.log(`[DEBUG] Attempting to get settings for user ${userId} in getFSRS`);
       const userSettings = await userSettingsService.getUserSettings(userId);
       
-      if (!userSettings || !userSettings.settings.fsrsParams) {
-        // Throw error if no user settings or FSRS params found
-        throw new Error(`No FSRS parameters found for user ${userId}`);
+      if (!userSettings) {
+        console.error(`[ERROR] User settings not found for user ${userId} in getFSRS. This is unexpected as settings should exist.`);
+        // Use default parameters as a fallback
+        return this._createDefaultFSRS();
+      }
+      
+      console.log(`[DEBUG] Retrieved settings for user ${userId}:`, JSON.stringify({
+        id: userSettings.id,
+        userId: userSettings.userId,
+        hasSettings: !!userSettings.settings,
+        hasFsrsParams: !!(userSettings.settings && userSettings.settings.fsrsParams)
+      }));
+      
+      // Ensure FSRS parameters exist
+      if (!userSettings.settings || !userSettings.settings.fsrsParams) {
+        console.error(`[ERROR] FSRS parameters missing in user settings for user ${userId}. Using defaults.`);
+        // Use default parameters as a fallback
+        return this._createDefaultFSRS();
       }
       
       // Extract FSRS parameters from user settings
@@ -149,10 +173,20 @@ export const fsrsService = {
       
       return userFSRS;
     } catch (error) {
-      // Rethrow the error instead of falling back to default parameters
-      logError('Error getting user FSRS parameters:', error);
-      throw error;
+      // Log the error but use default parameters as a fallback
+      console.error(`[ERROR] Exception in getFSRS for user ${userId}:`, error);
+      console.error(`Stack trace:`, new Error().stack);
+      
+      return this._createDefaultFSRS();
     }
+  },
+  
+  /**
+   * Create a default FSRS instance
+   * @private
+   */
+  _createDefaultFSRS(): FSRS {
+    return new FSRS(generatorParameters(DEFAULT_FSRS_PARAMS));
   },
   
   /**
@@ -240,17 +274,44 @@ export const fsrsService = {
     try {
       // Validate card
       if (!card || typeof card !== 'object') {
+        console.error('[ERROR] Invalid card object passed to calculateReviewMetrics:', card);
         throw new Error('Invalid card object');
       }
       
-      const fsrs = await this.getFSRS(userId);
-      const now = new Date();
+      let userIdToUse: string;
+      if (!userId) {
+        console.error('[ERROR] No user ID provided to calculateReviewMetrics for card:', card.id);
+        // Try to use a default user ID if available in the card
+        if (card.user_id) {
+          console.log(`[DEBUG] Using user_id from card: ${card.user_id}`);
+          userIdToUse = card.user_id as string;
+        } else {
+          throw new Error('User ID is required to calculate review metrics');
+        }
+      } else {
+        userIdToUse = userId;
+      }
+      
+      // Check if we have a cached FSRS instance for this user to avoid repeated calls to getUserSettings
+      const cachedFSRS = this.fsrsCache[userIdToUse];
+      const now = Date.now();
+      
+      let fsrs;
+      if (cachedFSRS && (now - cachedFSRS.timestamp) < CACHE_EXPIRATION) {
+        // Use the cached FSRS instance
+        fsrs = cachedFSRS.fsrs;
+      } else {
+        // Get a new FSRS instance
+        fsrs = await this.getFSRS(userIdToUse);
+      }
+      
+      const currentTime = new Date();
       
       // Create an FSRS card from our database card
-      const fsrsCard = this.convertToFSRSCard(card, now);
+      const fsrsCard = this.convertToFSRSCard(card, currentTime);
       
       // Get scheduling cards for all ratings
-      const result = fsrs.repeat(fsrsCard, now);
+      const result = fsrs.repeat(fsrsCard, currentTime);
       
       // Extract the due dates for each rating
       return {
@@ -260,8 +321,23 @@ export const fsrsService = {
         easy: this.ensureDate(result[Rating.Easy].card.due)
       };
     } catch (error) {
-      logError('FSRS calculation error details:', error);
-      throw error;
+      console.error(`[ERROR] FSRS calculation error for card ${card?.id}:`, error);
+      console.error(`[ERROR] Stack trace:`, new Error().stack);
+      
+      // Return default metrics as a fallback
+      const now = new Date();
+      const againDate = new Date(now.getTime() + 1000 * 60 * 60); // 1 hour
+      const hardDate = new Date(now.getTime() + 1000 * 60 * 60 * 24); // 1 day
+      const goodDate = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 3); // 3 days
+      const easyDate = new Date(now.getTime() + 1000 * 60 * 60 * 24 * 7); // 7 days
+      
+      console.log(`[DEBUG] Returning default metrics for card ${card?.id}`);
+      return {
+        again: againDate,
+        hard: hardDate,
+        good: goodDate,
+        easy: easyDate
+      };
     }
   },
   

@@ -189,6 +189,8 @@ export const deckController = {
 
       if (!userId) {
         console.error('[ERROR] User ID not found in request');
+        console.error('[DEBUG] Request user object:', JSON.stringify(req.user));
+        console.error('[DEBUG] Request headers:', JSON.stringify(req.headers));
         res.status(401).json({
           status: 'error',
           message: 'Unauthorized'
@@ -196,78 +198,108 @@ export const deckController = {
         return;
       }
 
-      const result = await deckService.getAllCardsForReview(slug, userId);
-
-      if (!result.deck) {
-        res.status(404).json({
-          status: 'error',
-          message: 'Deck not found'
-        });
-        return;
-      }
-
-      if (result.dailyLimitReached || result.allCaughtUp) {
-        // Unified handling for both "daily limit reached" and "all caught up" scenarios
-        res.status(200).json({
-          status: 'success',
-          data: {
-            deck: result.deck,
-            cards: [],
-            allCaughtUp: true,
-            message: "Great job! You've completed all your reviews for now. Check back later for more.",
-            totalCards: result.totalCards,
-            dailyProgress: result.dailyProgress
-          }
-        });
-        return;
-      }
+      console.log(`[INFO] Getting cards for review for deck ${slug} and user ${userId}`);
       
-      // Check if this is an "Empty Deck" response
-      if (result.emptyDeck) {
-        res.status(200).json({
-          status: 'success',
-          data: {
-            deck: result.deck,
-            cards: [],
-            emptyDeck: true,
-            message: "This deck doesn't have any cards yet. Add some cards to start reviewing!",
-            dailyProgress: result.dailyProgress
-          }
-        });
-        return;
-      }
-      
-      // Default case for no cards available (should rarely happen with the above checks)
-      if (!result.cards || result.cards.length === 0) {
-        res.status(200).json({
-          status: 'success',
-          data: {
-            deck: result.deck,
-            cards: [],
-            message: 'No cards available for review',
-            dailyProgress: result.dailyProgress
-          }
-        });
-        return;
-      }
+      try {
+        console.log(`[DEBUG] About to call deckService.getAllCardsForReview with slug=${slug}, userId=${userId}`);
+        const result = await deckService.getAllCardsForReview(slug, userId);
+        console.log(`[DEBUG] deckService.getAllCardsForReview returned successfully`);
 
-      res.status(200).json({
-        status: 'success',
-        data: {
-          deck: result.deck,
-          cards: result.cards,
-          dailyProgress: result.dailyProgress
+        if (!result.deck) {
+          console.log(`[DEBUG] No deck found for slug=${slug}, userId=${userId}`);
+          res.status(404).json({
+            status: 'error',
+            message: 'Deck not found'
+          });
+          return;
         }
-      });
+
+        if (result.dailyLimitReached || result.allCaughtUp) {
+          // Unified handling for both "daily limit reached" and "all caught up" scenarios
+          res.status(200).json({
+            status: 'success',
+            data: {
+              deck: result.deck,
+              cards: [],
+              allCaughtUp: true,
+              message: "Great job! You've completed all your reviews for now. Check back later for more.",
+              totalCards: result.totalCards,
+              dailyProgress: result.dailyProgress
+            }
+          });
+          return;
+        }
+        
+        // Check if this is an "Empty Deck" response
+        if (result.emptyDeck) {
+          res.status(200).json({
+            status: 'success',
+            data: {
+              deck: result.deck,
+              cards: [],
+              emptyDeck: true,
+              message: "This deck doesn't have any cards yet. Add some cards to start reviewing!",
+              dailyProgress: result.dailyProgress
+            }
+          });
+          return;
+        }
+        
+        // Default case for no cards available (should rarely happen with the above checks)
+        if (!result.cards || result.cards.length === 0) {
+          res.status(200).json({
+            status: 'success',
+            data: {
+              deck: result.deck,
+              cards: [],
+              message: 'No cards available for review',
+              dailyProgress: result.dailyProgress
+            }
+          });
+          return;
+        }
+
+        res.status(200).json({
+          status: 'success',
+          data: {
+            deck: result.deck,
+            cards: result.cards,
+            dailyProgress: result.dailyProgress
+          }
+        });
+      } catch (serviceError) {
+        console.error('[ERROR] Error in deckService.getAllCardsForReview:', {
+          error: serviceError,
+          message: serviceError instanceof Error ? serviceError.message : 'Unknown error',
+          stack: serviceError instanceof Error ? serviceError.stack : ''
+        });
+        
+        // Check if it's a user settings error
+        if (serviceError instanceof Error && 
+            (serviceError.message.includes('FSRS parameters') || 
+            serviceError.message.includes('user settings'))) {
+          res.status(500).json({
+            status: 'error',
+            message: 'Error with user settings. Please try again or contact support if the problem persists.'
+          });
+          return;
+        }
+        
+        // Generic error response
+        res.status(500).json({
+          status: 'error',
+          message: 'An error occurred while fetching cards for review'
+        });
+      }
     } catch (error) {
-      console.error('[ERROR] Error in getAllCardsForReview controller:', {
+      console.error('[ERROR] Unhandled error in getDeckReview controller:', {
         error,
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : ''
       });
       res.status(500).json({
         status: 'error',
-        message: 'An error occurred while fetching cards for review'
+        message: 'An unexpected error occurred'
       });
     }
   }),

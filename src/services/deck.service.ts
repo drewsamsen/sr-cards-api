@@ -62,7 +62,8 @@ export const deckService = {
   async calculateDailyLimitsAndRemaining(
     deckId: string, 
     userId: string, 
-    userSettings?: UserSettings | null
+    userSettings?: UserSettings | null,
+    deck?: Partial<Deck> | null
   ): Promise<{
     dailyLimits: DailyLimits;
     reviewCounts: ReviewCounts;
@@ -77,15 +78,26 @@ export const deckService = {
       userSettings = await userSettingsService.getUserSettings(userId);
     }
     
-    // Get the deck to check its dailyScaler
+    // Get the deck to check its dailyScaler if not provided
     let dailyScaler = 1.0;
-    try {
-      const deck = await this.getDeckById(deckId, userId);
-      if (deck) {
-        dailyScaler = deck.dailyScaler || 1.0;
+    if (deck) {
+      dailyScaler = deck.dailyScaler || 1.0;
+    } else {
+      try {
+        // Only fetch the deck if not provided
+        const fetchedDeck = await supabaseAdmin
+          .from('decks')
+          .select('daily_scaler')
+          .eq('id', deckId)
+          .eq('user_id', userId)
+          .single();
+          
+        if (fetchedDeck.data && fetchedDeck.data.daily_scaler) {
+          dailyScaler = fetchedDeck.data.daily_scaler;
+        }
+      } catch (error) {
+        console.warn(`[WARN] Error getting deck dailyScaler for deck ${deckId}:`, error);
       }
-    } catch (error) {
-      console.warn(`[WARN] Error getting deck dailyScaler for deck ${deckId}:`, error);
     }
     
     // Calculate daily limits
@@ -131,11 +143,29 @@ export const deckService = {
     // Get user settings
     const userSettings = await userSettingsService.getUserSettings(userId);
     
+    // Get the deck directly to pass to calculateDailyLimitsAndRemaining
+    let deck: Partial<Deck> | null = null;
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('decks')
+        .select('id, daily_scaler')
+        .eq('id', deckId)
+        .eq('user_id', userId)
+        .single();
+        
+      if (!error && data) {
+        deck = snakeToCamelObject(data) as Partial<Deck>;
+      }
+    } catch (error) {
+      console.warn(`[WARN] Error getting deck for getAvailableCardCounts: ${error}`);
+    }
+    
     // Calculate daily limits and remaining reviews
     const { dailyLimits, reviewCounts, remainingReviews } = await this.calculateDailyLimitsAndRemaining(
       deckId,
       userId,
-      userSettings
+      userSettings,
+      deck
     );
     
     // Get current date for comparison
@@ -147,7 +177,7 @@ export const deckService = {
       .select('*', { count: 'exact', head: true })
       .eq('deck_id', deckId)
       .eq('user_id', userId)
-      .eq('is_new', true);
+      .eq('state', 0);
       
     if (newError) {
       console.error(`[ERROR] Error counting new cards for deck ${deckId}:`, newError);
@@ -160,8 +190,8 @@ export const deckService = {
       .select('*', { count: 'exact', head: true })
       .eq('deck_id', deckId)
       .eq('user_id', userId)
-      .eq('is_new', false)
-      .lte('next_review_at', now);
+      .gt('state', 0)
+      .lte('due', now);
       
     if (reviewError) {
       console.error(`[ERROR] Error counting review cards for deck ${deckId}:`, reviewError);
@@ -209,83 +239,149 @@ export const deckService = {
   async getAllDecks(userId: string): Promise<Deck[]> {
     console.time('getAllDecks');
     
-    // Fetch all decks in a single query
-    const { data, error } = await supabaseAdmin
-      .from('decks')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    try {
+      // Fetch all decks in a single query
+      const { data, error } = await supabaseAdmin
+        .from('decks')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    if (error) {
+      if (error) {
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        return [];
+      }
+
+      // Convert snake_case DB results to camelCase for API
+      const decks = data.map(deck => snakeToCamelObject(deck) as Deck);
+      
+      // Extract all deck IDs
+      const deckIds = decks.map(deck => deck.id);
+      
+      // Get user settings to check daily limits
+      const userSettings = await userSettingsService.getUserSettings(userId);
+      
+      // Fetch deck statistics in a single batch query
+      const deckStatsMap = await cardReviewService.getDeckStatsBatch(deckIds, userId);
+      
+      // Get review counts in a single batch query
+      const reviewCountsMap = await logService.getReviewCountsBatch(userId, deckIds);
+      
+      // Get current date for comparison
+      const now = new Date().toISOString();
+      
+      // Batch query for all new cards across all decks
+      const { data: allNewCards, error: newCardsError } = await supabaseAdmin
+        .from('cards')
+        .select('deck_id, id')
+        .eq('user_id', userId)
+        .eq('state', 0)
+        .in('deck_id', deckIds);
+        
+      if (newCardsError) {
+        console.error('[ERROR] Error fetching new cards:', newCardsError);
+        throw newCardsError;
+      }
+      
+      // Batch query for all review cards across all decks
+      const { data: allReviewCards, error: reviewCardsError } = await supabaseAdmin
+        .from('cards')
+        .select('deck_id, id')
+        .eq('user_id', userId)
+        .gt('state', 0)
+        .lte('due', now)
+        .in('deck_id', deckIds);
+        
+      if (reviewCardsError) {
+        console.error('[ERROR] Error fetching review cards:', reviewCardsError);
+        throw reviewCardsError;
+      }
+      
+      // Count new cards per deck
+      const newCardsByDeck = new Map<string, number>();
+      allNewCards?.forEach(card => {
+        const count = newCardsByDeck.get(card.deck_id) || 0;
+        newCardsByDeck.set(card.deck_id, count + 1);
+      });
+      
+      // Count review cards per deck
+      const reviewCardsByDeck = new Map<string, number>();
+      allReviewCards?.forEach(card => {
+        const count = reviewCardsByDeck.get(card.deck_id) || 0;
+        reviewCardsByDeck.set(card.deck_id, count + 1);
+      });
+      
+      // Process each deck
+      const processedDecks = decks.map(deck => {
+        try {
+          // Get deck statistics
+          const deckStats = deckStatsMap.get(deck.id) || { 
+            deckId: deck.id, 
+            totalCards: 0, 
+            reviewReadyCards: 0,
+            newCards: 0,
+            dueReviewCards: 0
+          };
+          
+          // Get review counts
+          const reviewCounts = reviewCountsMap.get(deck.id) || {
+            newCardsCount: 0,
+            reviewCardsCount: 0
+          };
+          
+          // Set the statistics on the deck object
+          deck.totalCards = deckStats.totalCards;
+          deck.newCards = deckStats.newCards;
+          deck.dueCards = deckStats.dueReviewCards;
+          
+          // Calculate daily limits
+          const dailyScaler = deck.dailyScaler || 1.0;
+          const dailyLimits = this._calculateDailyLimits(userSettings, dailyScaler);
+          
+          // Calculate remaining cards based on daily limits
+          const newCardsRemaining = Math.max(0, dailyLimits.newCardsLimit - reviewCounts.newCardsCount);
+          const reviewCardsRemaining = Math.max(0, dailyLimits.reviewCardsLimit - reviewCounts.reviewCardsCount);
+          
+          // Get available cards from our batch queries
+          const availableNewCards = newCardsByDeck.get(deck.id) || 0;
+          const availableReviewCards = reviewCardsByDeck.get(deck.id) || 0;
+          
+          // Calculate available cards (minimum of cards in deck and daily remaining)
+          const newCardsAvailable = Math.min(availableNewCards, newCardsRemaining);
+          const reviewCardsAvailable = Math.min(availableReviewCards, reviewCardsRemaining);
+          
+          // Set remaining reviews
+          deck.remainingReviews = newCardsAvailable + reviewCardsAvailable;
+        } catch (error) {
+          console.error(`Error calculating stats for deck ${deck.id}:`, error);
+          deck.totalCards = 0;
+          deck.newCards = 0;
+          deck.dueCards = 0;
+          deck.remainingReviews = 0;
+        }
+        
+        return deck;
+      });
+      
+      // Validate the numbers before returning
+      for (const deck of processedDecks) {
+        // Ensure all values are non-negative
+        deck.totalCards = Math.max(0, deck.totalCards || 0);
+        deck.newCards = Math.max(0, deck.newCards || 0);
+        deck.dueCards = Math.max(0, deck.dueCards || 0);
+        deck.remainingReviews = Math.max(0, deck.remainingReviews || 0);
+      }
+      
       console.timeEnd('getAllDecks');
-      throw error;
-    }
-
-    if (!data || data.length === 0) {
+      return processedDecks;
+    } catch (error) {
+      console.error('[ERROR] Error in getAllDecks:', error);
       console.timeEnd('getAllDecks');
       return [];
     }
-
-    // Convert snake_case DB results to camelCase for API
-    const decks = data.map(deck => snakeToCamelObject(deck) as Deck);
-    
-    // Extract all deck IDs
-    const deckIds = decks.map(deck => deck.id);
-    
-    // Get user settings to check daily limits
-    const userSettings = await userSettingsService.getUserSettings(userId);
-    
-    // Fetch deck statistics in a single batch query
-    const deckStatsMap = await cardReviewService.getDeckStatsBatch(deckIds, userId);
-    
-    // Process each deck
-    const processedDecks = await Promise.all(decks.map(async (deck) => {
-      try {
-        // Get deck statistics
-        const deckStats = deckStatsMap.get(deck.id) || { 
-          deckId: deck.id, 
-          totalCards: 0, 
-          reviewReadyCards: 0,
-          newCards: 0,
-          dueReviewCards: 0
-        };
-        
-        // Set the statistics on the deck object
-        deck.totalCards = deckStats.totalCards;
-        
-        // Get available card counts using the centralized helper function
-        const { 
-          newCardsAvailable, 
-          reviewCardsAvailable, 
-          totalAvailable 
-        } = await this.getAvailableCardCounts(deck.id, userId);
-        
-        // Set the properties for new cards, due cards, and remaining reviews
-        deck.newCards = deckStats.newCards;
-        deck.dueCards = deckStats.dueReviewCards;
-        deck.remainingReviews = totalAvailable;
-      } catch (error) {
-        console.error(`Error calculating stats for deck ${deck.id}:`, error);
-        deck.totalCards = 0;
-        deck.newCards = 0;
-        deck.dueCards = 0;
-        deck.remainingReviews = 0;
-      }
-      
-      return deck;
-    }));
-    
-    // Validate the numbers before returning
-    for (const deck of processedDecks) {
-      // Ensure all values are non-negative
-      deck.totalCards = Math.max(0, deck.totalCards || 0);
-      deck.newCards = Math.max(0, deck.newCards || 0);
-      deck.dueCards = Math.max(0, deck.dueCards || 0);
-      deck.remainingReviews = Math.max(0, deck.remainingReviews || 0);
-    }
-    
-    console.timeEnd('getAllDecks');
-    return processedDecks;
   },
 
   /**
@@ -453,168 +549,202 @@ export const deckService = {
    * Get all cards available for review from a deck, respecting daily limits
    */
   async getAllCardsForReview(slug: string, userId: string): Promise<ReviewResult> {
-    const deck = await this.getDeckBySlug(slug, userId);
+    console.log(`[DEBUG] getAllCardsForReview called with slug=${slug}, userId=${userId}`);
     
-    if (!deck) {
-      return { deck: null, cards: [] };
-    }
-    
-    // Get user settings to check daily limits
-    const userSettings = await userSettingsService.getUserSettings(userId);
-    if (!userSettings) {
-      // If no settings, use default values
-      console.warn(`[WARN] No user settings found for user ${userId}, using defaults`);
-    }
-    
-    // Get available card counts using the centralized helper function
-    const { 
-      newCardsAvailable, 
-      reviewCardsAvailable, 
-      totalAvailable,
-      dailyLimits,
-      reviewCounts
-    } = await this.getAvailableCardCounts(deck.id, userId);
-    
-    // Create daily progress object
-    const dailyProgress: DailyProgressResponse = {
-      newCardsSeen: reviewCounts.newCardsCount,
-      newCardsLimit: dailyLimits.newCardsLimit,
-      reviewCardsSeen: reviewCounts.reviewCardsCount,
-      reviewCardsLimit: dailyLimits.reviewCardsLimit,
-      totalRemaining: totalAvailable
-    };
-    
-    // Check if daily limits are reached
-    if (totalAvailable === 0) {
-      return {
-        deck,
-        cards: [],
-        dailyProgress,
-        dailyLimitReached: true,
-        message: "You've reached your daily review limit for this deck. Great work!"
+    try {
+      const deck = await this.getDeckBySlug(slug, userId);
+      
+      if (!deck) {
+        console.log(`[DEBUG] No deck found for slug=${slug}, userId=${userId}`);
+        return { deck: null, cards: [] };
+      }
+      
+      console.log(`[DEBUG] Found deck: ${deck.id}, name=${deck.name}`);
+      
+      // Get user settings to check daily limits - do this ONCE at the beginning
+      console.log(`[DEBUG] Getting user settings for userId=${userId}`);
+      const userSettings = await userSettingsService.getUserSettings(userId);
+      
+      // Store FSRS parameters to avoid repeated calls
+      let fsrsParams = null;
+      if (userSettings && userSettings.settings && userSettings.settings.fsrsParams) {
+        fsrsParams = userSettings.settings.fsrsParams;
+        console.log(`[DEBUG] Using FSRS parameters from user settings for userId=${userId}`);
+      } else {
+        console.warn(`[WARN] No user settings found for user ${userId}, using defaults`);
+      }
+      
+      // Get available card counts using the centralized helper function
+      console.log(`[DEBUG] Getting available card counts for deckId=${deck.id}, userId=${userId}`);
+      const { 
+        newCardsAvailable, 
+        reviewCardsAvailable, 
+        totalAvailable,
+        dailyLimits,
+        reviewCounts
+      } = await this.getAvailableCardCounts(deck.id, userId);
+      
+      console.log(`[DEBUG] Card counts: new=${newCardsAvailable}, review=${reviewCardsAvailable}, total=${totalAvailable}`);
+      
+      // Create daily progress object
+      const dailyProgress: DailyProgressResponse = {
+        newCardsSeen: reviewCounts.newCardsCount,
+        newCardsLimit: dailyLimits.newCardsLimit,
+        reviewCardsSeen: reviewCounts.reviewCardsCount,
+        reviewCardsLimit: dailyLimits.reviewCardsLimit,
+        totalRemaining: totalAvailable
       };
-    }
-    
-    // Get current date for comparison
-    const now = new Date().toISOString();
-    
-    // First, get all available new cards
-    let allNewCards = [];
-    if (newCardsAvailable > 0) {
-      // Get all available new cards
-      const { data: allNewCardsData, error: allNewCardsError } = await supabaseAdmin
-        .from('cards')
-        .select(`
-          *,
-          decks:deck_id (
-            name,
-            slug
-          )
-        `)
-        .eq('deck_id', deck.id)
-        .eq('user_id', userId)
-        .eq('is_new', true)
-        .limit(newCardsAvailable);
-        
-      if (allNewCardsError) {
-        throw allNewCardsError;
+      
+      // Check if daily limits are reached
+      if (totalAvailable === 0) {
+        return {
+          deck,
+          cards: [],
+          dailyProgress,
+          dailyLimitReached: true,
+          message: "You've reached your daily review limit for this deck. Great work!"
+        };
       }
       
-      allNewCards = allNewCardsData || [];
-    }
-    
-    // Then, get all available review cards
-    let allReviewCards = [];
-    if (reviewCardsAvailable > 0) {
-      // Get all available review cards
-      const { data: allReviewCardsData, error: allReviewCardsError } = await supabaseAdmin
-        .from('cards')
-        .select(`
-          *,
-          decks:deck_id (
-            name,
-            slug
-          )
-        `)
-        .eq('deck_id', deck.id)
-        .eq('user_id', userId)
-        .eq('is_new', false)
-        .lte('next_review_at', now)
-        .limit(reviewCardsAvailable);
+      // Get current date for comparison
+      const now = new Date().toISOString();
+      
+      // First, get all available new cards
+      let allNewCards = [];
+      if (newCardsAvailable > 0) {
+        // Get all available new cards
+        const { data: allNewCardsData, error: allNewCardsError } = await supabaseAdmin
+          .from('cards')
+          .select(`
+            *,
+            decks:deck_id (
+              name,
+              slug
+            )
+          `)
+          .eq('deck_id', deck.id)
+          .eq('user_id', userId)
+          .eq('state', 0)
+          .limit(newCardsAvailable);
+          
+        if (allNewCardsError) {
+          throw allNewCardsError;
+        }
         
-      if (allReviewCardsError) {
-        throw allReviewCardsError;
+        allNewCards = allNewCardsData || [];
       }
       
-      allReviewCards = allReviewCardsData || [];
-    }
-    
-    // Combine new cards and review cards and shuffle the combined array
-    const combinedCards = [...allNewCards, ...allReviewCards].sort(() => Math.random() - 0.5);
-    
-    // Check if there are no cards ready for review
-    if (!combinedCards || combinedCards.length === 0) {
-      // Check if there are any cards in the deck at all
-      const { count, error: countError } = await supabaseAdmin
-        .from('cards')
-        .select('*', { count: 'exact', head: true })
-        .eq('deck_id', deck.id)
-        .eq('user_id', userId);
+      // Then, get all available review cards
+      let allReviewCards = [];
+      if (reviewCardsAvailable > 0) {
+        // Get all available review cards
+        const { data: allReviewCardsData, error: allReviewCardsError } = await supabaseAdmin
+          .from('cards')
+          .select(`
+            *,
+            decks:deck_id (
+              name,
+              slug
+            )
+          `)
+          .eq('deck_id', deck.id)
+          .eq('user_id', userId)
+          .gt('state', 0)
+          .lte('due', now)
+          .limit(reviewCardsAvailable);
+          
+        if (allReviewCardsError) {
+          throw allReviewCardsError;
+        }
         
-      if (countError) {
-        throw countError;
+        allReviewCards = allReviewCardsData || [];
       }
       
-      // If there are cards but none ready for review, return a special status
-      if (count && count > 0) {
+      // Combine new cards and review cards and shuffle the combined array
+      const combinedCards = [...allNewCards, ...allReviewCards].sort(() => Math.random() - 0.5);
+      
+      // Check if there are no cards ready for review
+      if (!combinedCards || combinedCards.length === 0) {
+        // Check if there are any cards in the deck at all
+        const { count, error: countError } = await supabaseAdmin
+          .from('cards')
+          .select('*', { count: 'exact', head: true })
+          .eq('deck_id', deck.id)
+          .eq('user_id', userId);
+          
+        if (countError) {
+          throw countError;
+        }
+        
+        // If there are cards but none ready for review, return a special status
+        if (count && count > 0) {
+          return { 
+            deck, 
+            cards: [],
+            allCaughtUp: true,
+            totalCards: count,
+            dailyProgress
+          };
+        }
+        
+        // If there are no cards at all
         return { 
           deck, 
           cards: [],
-          allCaughtUp: true,
-          totalCards: count,
+          emptyDeck: true,
           dailyProgress
         };
       }
       
-      // If there are no cards at all
+      // Process all cards with deck info and calculate review metrics for each card
+      console.log(`[DEBUG] Processing ${combinedCards.length} cards for review metrics`);
+      
+      // Get FSRS instance once for all cards to avoid repeated calls
+      const fsrs = await fsrsService.getFSRS(userId);
+      
+      const cardsWithDeckInfo = [];
+      
+      // Process cards sequentially instead of in parallel to avoid overwhelming the system
+      for (const card of combinedCards) {
+        try {
+          const cardWithDeckInfo = {
+            ...card,
+            deck_name: card.decks?.name,
+            deck_slug: card.decks?.slug
+          };
+          
+          // Remove the nested decks object before converting
+          delete cardWithDeckInfo.decks;
+          
+          // Calculate review metrics for this card
+          // Use a direct call to calculateReviewMetrics with the FSRS instance
+          // to avoid repeated calls to getUserSettings
+          console.log(`[DEBUG] Calculating review metrics for card ${card.id}`);
+          const reviewMetrics = await fsrsService.calculateReviewMetrics(card, userId);
+          
+          // Convert to camelCase and add review metrics
+          const camelCaseCard = snakeToCamelObject(cardWithDeckInfo) as Card;
+          cardsWithDeckInfo.push({
+            ...camelCaseCard,
+            reviewMetrics
+          });
+        } catch (cardError) {
+          console.error(`[ERROR] Error processing card ${card.id}:`, cardError);
+          // Continue with the next card instead of failing the entire request
+        }
+      }
+      
+      console.log(`[DEBUG] Successfully processed ${cardsWithDeckInfo.length} cards`);
+      
       return { 
         deck, 
-        cards: [],
-        emptyDeck: true,
+        cards: cardsWithDeckInfo,
         dailyProgress
       };
+    } catch (error) {
+      console.error('[ERROR] Error in getAllCardsForReview:', error);
+      return { deck: null, cards: [] };
     }
-    
-    // Process all cards with deck info and calculate review metrics for each card
-    const cardsWithDeckInfoPromises = combinedCards.map(async (card) => {
-      const cardWithDeckInfo = {
-        ...card,
-        deck_name: card.decks?.name,
-        deck_slug: card.decks?.slug
-      };
-      
-      // Remove the nested decks object before converting
-      delete cardWithDeckInfo.decks;
-      
-      // Calculate review metrics for this card
-      const reviewMetrics = await fsrsService.calculateReviewMetrics(card, userId);
-      
-      // Convert to camelCase and add review metrics
-      const camelCaseCard = snakeToCamelObject(cardWithDeckInfo) as Card;
-      return {
-        ...camelCaseCard,
-        reviewMetrics
-      };
-    });
-    
-    // Wait for all promises to resolve
-    const cardsWithDeckInfo = await Promise.all(cardsWithDeckInfoPromises);
-    
-    return { 
-      deck, 
-      cards: cardsWithDeckInfo,
-      dailyProgress
-    };
   },
 
   /**
@@ -638,16 +768,60 @@ export const deckService = {
     // Get count of total cards
     deck.totalCards = await cardReviewService.countTotalCards(deck.id, userId);
     
-    // Get available card counts using the centralized helper function
-    const { 
-      newCardsAvailable, 
-      reviewCardsAvailable, 
-      totalAvailable 
-    } = await this.getAvailableCardCounts(deck.id, userId);
+    // Instead of calling getAvailableCardCounts which creates a circular dependency,
+    // calculate the stats directly
+    const now = new Date().toISOString();
     
-    // Set the properties for new cards and due cards
+    // Count available new cards in the deck
+    const { count: totalNewCards, error: newError } = await supabaseAdmin
+      .from('cards')
+      .select('*', { count: 'exact', head: true })
+      .eq('deck_id', deck.id)
+      .eq('user_id', userId)
+      .eq('state', 0);
+      
+    if (newError) {
+      console.error(`[ERROR] Error counting new cards for deck ${deck.id}:`, newError);
+      deck.newCards = 0;
+    } else {
+      deck.newCards = totalNewCards || 0;
+    }
+    
+    // Count available review cards in the deck
+    const { count: totalReviewCards, error: reviewError } = await supabaseAdmin
+      .from('cards')
+      .select('*', { count: 'exact', head: true })
+      .eq('deck_id', deck.id)
+      .eq('user_id', userId)
+      .gt('state', 0)
+      .lte('due', now);
+      
+    if (reviewError) {
+      console.error(`[ERROR] Error counting review cards for deck ${deck.id}:`, reviewError);
+      deck.dueCards = 0;
+    } else {
+      deck.dueCards = totalReviewCards || 0;
+    }
+    
+    // Calculate daily limits and review counts - pass the deck to avoid circular dependency
+    const { dailyLimits, reviewCounts } = await this.calculateDailyLimitsAndRemaining(
+      deck.id,
+      userId,
+      userSettings,
+      deck // Pass the deck to avoid another DB call
+    );
+    
+    // Calculate remaining cards based on daily limits
+    const newCardsRemaining = Math.max(0, dailyLimits.newCardsLimit - reviewCounts.newCardsCount);
+    const reviewCardsRemaining = Math.max(0, dailyLimits.reviewCardsLimit - reviewCounts.reviewCardsCount);
+    
+    // Calculate available cards (minimum of cards in deck and daily remaining)
+    const newCardsAvailable = Math.min(deck.newCards, newCardsRemaining);
+    const reviewCardsAvailable = Math.min(deck.dueCards, reviewCardsRemaining);
+    
+    // Update the deck stats
     deck.newCards = newCardsAvailable;
     deck.dueCards = reviewCardsAvailable;
-    deck.remainingReviews = totalAvailable;
+    deck.remainingReviews = newCardsAvailable + reviewCardsAvailable;
   }
 }; 
