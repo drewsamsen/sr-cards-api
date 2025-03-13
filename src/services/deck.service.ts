@@ -625,6 +625,7 @@ export const deckService = {
           .eq('deck_id', deck.id)
           .eq('user_id', userId)
           .eq('state', 0)
+          .order('RANDOM()')
           .limit(newCardsAvailable);
           
         if (allNewCardsError) {
@@ -651,6 +652,7 @@ export const deckService = {
           .eq('user_id', userId)
           .gt('state', 0)
           .lte('due', now)
+          .order('due', { ascending: true })
           .limit(reviewCardsAvailable);
           
         if (allReviewCardsError) {
