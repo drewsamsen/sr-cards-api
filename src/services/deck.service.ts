@@ -115,6 +115,74 @@ export const deckService = {
   },
 
   /**
+   * Get the number of new and review cards available for a user and deck
+   * This is a centralized helper function that can be used across the application
+   */
+  async getAvailableCardCounts(
+    deckId: string,
+    userId: string
+  ): Promise<{
+    newCardsAvailable: number;
+    reviewCardsAvailable: number;
+    totalAvailable: number;
+    dailyLimits: DailyLimits;
+    reviewCounts: ReviewCounts;
+  }> {
+    // Get user settings
+    const userSettings = await userSettingsService.getUserSettings(userId);
+    
+    // Calculate daily limits and remaining reviews
+    const { dailyLimits, reviewCounts, remainingReviews } = await this.calculateDailyLimitsAndRemaining(
+      deckId,
+      userId,
+      userSettings
+    );
+    
+    // Get current date for comparison
+    const now = new Date().toISOString();
+    
+    // Count available new cards in the deck
+    const { count: totalNewCards, error: newError } = await supabaseAdmin
+      .from('cards')
+      .select('*', { count: 'exact', head: true })
+      .eq('deck_id', deckId)
+      .eq('user_id', userId)
+      .eq('is_new', true);
+      
+    if (newError) {
+      console.error(`[ERROR] Error counting new cards for deck ${deckId}:`, newError);
+      throw newError;
+    }
+    
+    // Count available review cards in the deck
+    const { count: totalReviewCards, error: reviewError } = await supabaseAdmin
+      .from('cards')
+      .select('*', { count: 'exact', head: true })
+      .eq('deck_id', deckId)
+      .eq('user_id', userId)
+      .eq('is_new', false)
+      .lte('next_review_at', now);
+      
+    if (reviewError) {
+      console.error(`[ERROR] Error counting review cards for deck ${deckId}:`, reviewError);
+      throw reviewError;
+    }
+    
+    // Calculate available cards (minimum of cards in deck and daily remaining)
+    const newCardsAvailable = Math.min(totalNewCards || 0, remainingReviews.newCardsRemaining);
+    const reviewCardsAvailable = Math.min(totalReviewCards || 0, remainingReviews.reviewCardsRemaining);
+    const totalAvailable = newCardsAvailable + reviewCardsAvailable;
+    
+    return {
+      newCardsAvailable,
+      reviewCardsAvailable,
+      totalAvailable,
+      dailyLimits,
+      reviewCounts
+    };
+  },
+
+  /**
    * Calculate remaining reviews based on daily limits, review counts, and available cards
    * @private
    */
@@ -170,11 +238,8 @@ export const deckService = {
     // Fetch deck statistics in a single batch query
     const deckStatsMap = await cardReviewService.getDeckStatsBatch(deckIds, userId);
     
-    // Fetch review counts in a single batch query
-    const reviewCountsMap = await logService.getReviewCountsBatch(userId, deckIds);
-    
-    // Combine the data for each deck
-    for (const deck of decks) {
+    // Process each deck
+    const processedDecks = await Promise.all(decks.map(async (deck) => {
       try {
         // Get deck statistics
         const deckStats = deckStatsMap.get(deck.id) || { 
@@ -185,28 +250,20 @@ export const deckService = {
           dueReviewCards: 0
         };
         
-        // Get review counts - this should never be undefined since we initialize the map with all deck IDs
-        const reviewCounts = reviewCountsMap.get(deck.id)!;
-        
         // Set the statistics on the deck object
         deck.totalCards = deckStats.totalCards;
         
-        // Set the new properties for new cards and due cards
+        // Get available card counts using the centralized helper function
+        const { 
+          newCardsAvailable, 
+          reviewCardsAvailable, 
+          totalAvailable 
+        } = await this.getAvailableCardCounts(deck.id, userId);
+        
+        // Set the properties for new cards, due cards, and remaining reviews
         deck.newCards = deckStats.newCards;
         deck.dueCards = deckStats.dueReviewCards;
-        
-        // Calculate daily limits using the helper method
-        const dailyScaler = deck.dailyScaler || 1.0;
-        const dailyLimits = this._calculateDailyLimits(userSettings, dailyScaler);
-        
-        // Calculate remaining reviews using the helper method
-        deck.remainingReviews = this._calculateRemainingReviews(
-          dailyLimits,
-          reviewCounts,
-          { newCards: deckStats.newCards, dueCards: deckStats.dueReviewCards }
-        );
-        
-        // IMPORTANT: A user might still be able to review new cards even if all review cards are caught up
+        deck.remainingReviews = totalAvailable;
       } catch (error) {
         console.error(`Error calculating stats for deck ${deck.id}:`, error);
         deck.totalCards = 0;
@@ -214,25 +271,21 @@ export const deckService = {
         deck.dueCards = 0;
         deck.remainingReviews = 0;
       }
-    }
+      
+      return deck;
+    }));
     
     // Validate the numbers before returning
-    for (const deck of decks) {
-      // Initialize properties if they're undefined
-      deck.totalCards = deck.totalCards || 0;
-      deck.newCards = deck.newCards || 0;
-      deck.dueCards = deck.dueCards || 0;
-      deck.remainingReviews = deck.remainingReviews || 0;
-      
+    for (const deck of processedDecks) {
       // Ensure all values are non-negative
-      deck.totalCards = Math.max(0, deck.totalCards);
-      deck.newCards = Math.max(0, deck.newCards);
-      deck.dueCards = Math.max(0, deck.dueCards);
-      deck.remainingReviews = Math.max(0, deck.remainingReviews);
+      deck.totalCards = Math.max(0, deck.totalCards || 0);
+      deck.newCards = Math.max(0, deck.newCards || 0);
+      deck.dueCards = Math.max(0, deck.dueCards || 0);
+      deck.remainingReviews = Math.max(0, deck.remainingReviews || 0);
     }
     
     console.timeEnd('getAllDecks');
-    return decks;
+    return processedDecks;
   },
 
   /**
@@ -413,12 +466,14 @@ export const deckService = {
       console.warn(`[WARN] No user settings found for user ${userId}, using defaults`);
     }
     
-    // Use the utility method to calculate daily limits and remaining reviews
-    const { dailyLimits, reviewCounts, remainingReviews } = await this.calculateDailyLimitsAndRemaining(
-      deck.id,
-      userId,
-      userSettings
-    );
+    // Get available card counts using the centralized helper function
+    const { 
+      newCardsAvailable, 
+      reviewCardsAvailable, 
+      totalAvailable,
+      dailyLimits,
+      reviewCounts
+    } = await this.getAvailableCardCounts(deck.id, userId);
     
     // Create daily progress object
     const dailyProgress: DailyProgressResponse = {
@@ -426,11 +481,11 @@ export const deckService = {
       newCardsLimit: dailyLimits.newCardsLimit,
       reviewCardsSeen: reviewCounts.reviewCardsCount,
       reviewCardsLimit: dailyLimits.reviewCardsLimit,
-      totalRemaining: remainingReviews.totalRemaining
+      totalRemaining: totalAvailable
     };
     
     // Check if daily limits are reached
-    if (remainingReviews.totalRemaining === 0) {
+    if (totalAvailable === 0) {
       return {
         deck,
         cards: [],
@@ -443,9 +498,9 @@ export const deckService = {
     // Get current date for comparison
     const now = new Date().toISOString();
     
-    // First, get all available new cards (state=0)
+    // First, get all available new cards
     let allNewCards = [];
-    if (remainingReviews.newCardsRemaining > 0) {
+    if (newCardsAvailable > 0) {
       // Get all available new cards
       const { data: allNewCardsData, error: allNewCardsError } = await supabaseAdmin
         .from('cards')
@@ -458,7 +513,8 @@ export const deckService = {
         `)
         .eq('deck_id', deck.id)
         .eq('user_id', userId)
-        .eq('state', 0);
+        .eq('is_new', true)
+        .limit(newCardsAvailable);
         
       if (allNewCardsError) {
         throw allNewCardsError;
@@ -467,9 +523,9 @@ export const deckService = {
       allNewCards = allNewCardsData || [];
     }
     
-    // Then, get all available review cards (state > 0 and due <= now)
+    // Then, get all available review cards
     let allReviewCards = [];
-    if (remainingReviews.reviewCardsRemaining > 0) {
+    if (reviewCardsAvailable > 0) {
       // Get all available review cards
       const { data: allReviewCardsData, error: allReviewCardsError } = await supabaseAdmin
         .from('cards')
@@ -482,8 +538,9 @@ export const deckService = {
         `)
         .eq('deck_id', deck.id)
         .eq('user_id', userId)
-        .gt('state', 0)
-        .lte('due', now);
+        .eq('is_new', false)
+        .lte('next_review_at', now)
+        .limit(reviewCardsAvailable);
         
       if (allReviewCardsError) {
         throw allReviewCardsError;
@@ -492,28 +549,8 @@ export const deckService = {
       allReviewCards = allReviewCardsData || [];
     }
     
-    // Randomly select cards up to the daily limits
-    let newCards = allNewCards;
-    let reviewCards = allReviewCards;
-    
-    // If we have more new cards than the limit, randomly select up to the limit
-    if (allNewCards.length > remainingReviews.newCardsRemaining) {
-      // Shuffle the array
-      const shuffledNewCards = [...allNewCards].sort(() => Math.random() - 0.5);
-      // Take only up to the limit
-      newCards = shuffledNewCards.slice(0, remainingReviews.newCardsRemaining);
-    }
-    
-    // If we have more review cards than the limit, randomly select up to the limit
-    if (allReviewCards.length > remainingReviews.reviewCardsRemaining) {
-      // Shuffle the array
-      const shuffledReviewCards = [...allReviewCards].sort(() => Math.random() - 0.5);
-      // Take only up to the limit
-      reviewCards = shuffledReviewCards.slice(0, remainingReviews.reviewCardsRemaining);
-    }
-    
     // Combine new cards and review cards and shuffle the combined array
-    const combinedCards = [...newCards, ...reviewCards].sort(() => Math.random() - 0.5);
+    const combinedCards = [...allNewCards, ...allReviewCards].sort(() => Math.random() - 0.5);
     
     // Check if there are no cards ready for review
     if (!combinedCards || combinedCards.length === 0) {
@@ -601,52 +638,16 @@ export const deckService = {
     // Get count of total cards
     deck.totalCards = await cardReviewService.countTotalCards(deck.id, userId);
     
-    // Count available new and review cards
-    const now = new Date().toISOString();
+    // Get available card counts using the centralized helper function
+    const { 
+      newCardsAvailable, 
+      reviewCardsAvailable, 
+      totalAvailable 
+    } = await this.getAvailableCardCounts(deck.id, userId);
     
-    // Count available new cards
-    const { count: availableNewCards, error: newError } = await supabaseAdmin
-      .from('cards')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('deck_id', deck.id)
-      .eq('state', 0);
-      
-    if (newError) {
-      console.error(`Error counting new cards for deck ${deck.id}:`, newError);
-      throw newError;
-    }
-    
-    // Count available review cards
-    const { count: availableReviewCards, error: reviewError } = await supabaseAdmin
-      .from('cards')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .eq('deck_id', deck.id)
-      .gt('state', 0)
-      .lte('due', now);
-      
-    if (reviewError) {
-      console.error(`Error counting review cards for deck ${deck.id}:`, reviewError);
-      throw reviewError;
-    }
-    
-    // Set the new properties for new cards and due cards
-    deck.newCards = availableNewCards || 0;
-    deck.dueCards = availableReviewCards || 0;
-    
-    // Use the utility method to calculate daily limits and remaining reviews
-    const { dailyLimits, reviewCounts, remainingReviews } = await this.calculateDailyLimitsAndRemaining(
-      deck.id,
-      userId,
-      userSettings
-    );
-    
-    // Set the remaining reviews using the helper method
-    deck.remainingReviews = this._calculateRemainingReviews(
-      dailyLimits,
-      reviewCounts,
-      { newCards: availableNewCards || 0, dueCards: availableReviewCards || 0 }
-    );
+    // Set the properties for new cards and due cards
+    deck.newCards = newCardsAvailable;
+    deck.dueCards = reviewCardsAvailable;
+    deck.remainingReviews = totalAvailable;
   }
 }; 

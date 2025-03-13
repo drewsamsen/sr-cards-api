@@ -382,15 +382,16 @@ export const cardService = {
       console.warn(`[WARN] No user settings found for user ${userId}, using defaults`);
     }
     
-    // Use the utility method from deckService to calculate daily limits and remaining reviews
-    const { dailyLimits, reviewCounts, remainingReviews } = await deckService.calculateDailyLimitsAndRemaining(
-      card.deckId,
-      userId,
-      userSettings
-    );
-    
     // Determine if this is a new card or a review card
     const isNewCard = card.state === 0;
+    
+    // Get available card counts using the centralized helper function
+    const { 
+      newCardsAvailable, 
+      reviewCardsAvailable, 
+      dailyLimits,
+      reviewCounts
+    } = await deckService.getAvailableCardCounts(card.deckId, userId);
     
     // Create daily progress object
     const dailyProgress: DailyProgressResponse = {
@@ -398,14 +399,13 @@ export const cardService = {
       newCardsLimit: dailyLimits.newCardsLimit,
       reviewCardsSeen: reviewCounts.reviewCardsCount,
       reviewCardsLimit: dailyLimits.reviewCardsLimit,
-      totalRemaining: remainingReviews.totalRemaining
+      totalRemaining: newCardsAvailable + reviewCardsAvailable
     };
     
     // Check if the user has reached their daily limit for this type of card
-    // Use the same logic as in the deck service - check if remaining reviews <= 0
-    if ((isNewCard && remainingReviews.newCardsRemaining <= 0) || 
-        (!isNewCard && remainingReviews.reviewCardsRemaining <= 0)) {
-      console.debug(`[DEBUG] Daily limit reached for user ${userId} - ${isNewCard ? 'new' : 'review'} cards: ${isNewCard ? remainingReviews.newCardsRemaining : remainingReviews.reviewCardsRemaining} remaining`);
+    if ((isNewCard && newCardsAvailable <= 0) || 
+        (!isNewCard && reviewCardsAvailable <= 0)) {
+      console.debug(`[DEBUG] Daily limit reached for user ${userId} - ${isNewCard ? 'new' : 'review'} cards: ${isNewCard ? newCardsAvailable : reviewCardsAvailable} available`);
       return {
         dailyLimitReached: true,
         message: `You've reached your daily limit for ${isNewCard ? 'new' : 'review'} cards. Come back later!`,
