@@ -5,6 +5,7 @@ import { fsrsService } from './fsrs.service';
 import { logService } from './log.service';
 import { userSettingsService } from './user-settings.service';
 import { DailyProgressResponse } from '../models/daily-progress.model';
+import { deckService } from './deck.service';
 
 export const cardService = {
   /**
@@ -375,38 +376,36 @@ export const cardService = {
       return null;
     }
 
-    // Check if the user has reached their daily limits
     // Get user settings
     const userSettings = await userSettingsService.getUserSettings(userId);
     if (!userSettings) {
       console.warn(`[WARN] No user settings found for user ${userId}, using defaults`);
     }
     
-    const newCardsLimit = userSettings?.settings?.learning?.newCardsPerDay || 5;
-    const reviewCardsLimit = userSettings?.settings?.learning?.maxReviewsPerDay || 10;
+    // Use the utility method from deckService to calculate daily limits and remaining reviews
+    const { dailyLimits, reviewCounts, remainingReviews } = await deckService.calculateDailyLimitsAndRemaining(
+      card.deckId,
+      userId,
+      userSettings
+    );
     
     // Determine if this is a new card or a review card
     const isNewCard = card.state === 0;
     
-    // Get counts of cards reviewed in the last 24 hours in a single call
-    const { newCardsCount, reviewCardsCount } = await logService.getReviewCounts({
-      userId,
-      deckId: card.deckId,
-      timeWindow: 24
-    });
-    
     // Create daily progress object
     const dailyProgress: DailyProgressResponse = {
-      newCardsSeen: newCardsCount,
-      newCardsLimit,
-      reviewCardsSeen: reviewCardsCount,
-      reviewCardsLimit,
-      totalRemaining: Math.max(0, newCardsLimit - newCardsCount) + Math.max(0, reviewCardsLimit - reviewCardsCount)
+      newCardsSeen: reviewCounts.newCardsCount,
+      newCardsLimit: dailyLimits.newCardsLimit,
+      reviewCardsSeen: reviewCounts.reviewCardsCount,
+      reviewCardsLimit: dailyLimits.reviewCardsLimit,
+      totalRemaining: remainingReviews.totalRemaining
     };
     
     // Check if the user has reached their daily limit for this type of card
-    if ((isNewCard && newCardsCount >= newCardsLimit) || 
-        (!isNewCard && reviewCardsCount >= reviewCardsLimit)) {
+    // Use the same logic as in the deck service - check if remaining reviews <= 0
+    if ((isNewCard && remainingReviews.newCardsRemaining <= 0) || 
+        (!isNewCard && remainingReviews.reviewCardsRemaining <= 0)) {
+      console.debug(`[DEBUG] Daily limit reached for user ${userId} - ${isNewCard ? 'new' : 'review'} cards: ${isNewCard ? remainingReviews.newCardsRemaining : remainingReviews.reviewCardsRemaining} remaining`);
       return {
         dailyLimitReached: true,
         message: `You've reached your daily limit for ${isNewCard ? 'new' : 'review'} cards. Come back later!`,

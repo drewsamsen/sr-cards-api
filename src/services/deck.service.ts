@@ -56,6 +56,65 @@ export const deckService = {
   },
 
   /**
+   * Calculate daily limits and remaining reviews for a deck
+   * This is a utility method that can be used by other services
+   */
+  async calculateDailyLimitsAndRemaining(
+    deckId: string, 
+    userId: string, 
+    userSettings?: UserSettings | null
+  ): Promise<{
+    dailyLimits: DailyLimits;
+    reviewCounts: ReviewCounts;
+    remainingReviews: {
+      newCardsRemaining: number;
+      reviewCardsRemaining: number;
+      totalRemaining: number;
+    };
+  }> {
+    // Get user settings if not provided
+    if (!userSettings) {
+      userSettings = await userSettingsService.getUserSettings(userId);
+    }
+    
+    // Get the deck to check its dailyScaler
+    let dailyScaler = 1.0;
+    try {
+      const deck = await this.getDeckById(deckId, userId);
+      if (deck) {
+        dailyScaler = deck.dailyScaler || 1.0;
+      }
+    } catch (error) {
+      console.warn(`[WARN] Error getting deck dailyScaler for deck ${deckId}:`, error);
+    }
+    
+    // Calculate daily limits
+    const dailyLimits = this._calculateDailyLimits(userSettings, dailyScaler);
+    
+    // Get counts of cards reviewed in the last 24 hours
+    const reviewCounts = await logService.getReviewCounts({
+      userId,
+      deckId,
+      timeWindow: 24
+    });
+    
+    // Calculate remaining cards based on daily limits
+    const newCardsRemaining = Math.max(0, dailyLimits.newCardsLimit - reviewCounts.newCardsCount);
+    const reviewCardsRemaining = Math.max(0, dailyLimits.reviewCardsLimit - reviewCounts.reviewCardsCount);
+    const totalRemaining = newCardsRemaining + reviewCardsRemaining;
+    
+    return {
+      dailyLimits,
+      reviewCounts,
+      remainingReviews: {
+        newCardsRemaining,
+        reviewCardsRemaining,
+        totalRemaining
+      }
+    };
+  },
+
+  /**
    * Calculate remaining reviews based on daily limits, review counts, and available cards
    * @private
    */
@@ -354,21 +413,12 @@ export const deckService = {
       console.warn(`[WARN] No user settings found for user ${userId}, using defaults`);
     }
     
-    // Calculate daily limits using the helper method
-    const dailyScaler = deck.dailyScaler || 1.0;
-    const dailyLimits = this._calculateDailyLimits(userSettings, dailyScaler);
-    
-    // Get counts of cards reviewed in the last 24 hours for this specific deck
-    const reviewCounts = await logService.getReviewCounts({
+    // Use the utility method to calculate daily limits and remaining reviews
+    const { dailyLimits, reviewCounts, remainingReviews } = await this.calculateDailyLimitsAndRemaining(
+      deck.id,
       userId,
-      deckId: deck.id,
-      timeWindow: 24
-    });
-    
-    // Calculate remaining cards based on daily limits
-    const newCardsRemaining = Math.max(0, dailyLimits.newCardsLimit - reviewCounts.newCardsCount);
-    const reviewCardsRemaining = Math.max(0, dailyLimits.reviewCardsLimit - reviewCounts.reviewCardsCount);
-    const totalRemaining = newCardsRemaining + reviewCardsRemaining;
+      userSettings
+    );
     
     // Create daily progress object
     const dailyProgress: DailyProgressResponse = {
@@ -376,11 +426,11 @@ export const deckService = {
       newCardsLimit: dailyLimits.newCardsLimit,
       reviewCardsSeen: reviewCounts.reviewCardsCount,
       reviewCardsLimit: dailyLimits.reviewCardsLimit,
-      totalRemaining
+      totalRemaining: remainingReviews.totalRemaining
     };
     
     // Check if daily limits are reached
-    if (totalRemaining === 0) {
+    if (remainingReviews.totalRemaining === 0) {
       return {
         deck,
         cards: [],
@@ -395,7 +445,7 @@ export const deckService = {
     
     // First, get all available new cards (state=0)
     let allNewCards = [];
-    if (newCardsRemaining > 0) {
+    if (remainingReviews.newCardsRemaining > 0) {
       // Get all available new cards
       const { data: allNewCardsData, error: allNewCardsError } = await supabaseAdmin
         .from('cards')
@@ -419,7 +469,7 @@ export const deckService = {
     
     // Then, get all available review cards (state > 0 and due <= now)
     let allReviewCards = [];
-    if (reviewCardsRemaining > 0) {
+    if (remainingReviews.reviewCardsRemaining > 0) {
       // Get all available review cards
       const { data: allReviewCardsData, error: allReviewCardsError } = await supabaseAdmin
         .from('cards')
@@ -447,19 +497,19 @@ export const deckService = {
     let reviewCards = allReviewCards;
     
     // If we have more new cards than the limit, randomly select up to the limit
-    if (allNewCards.length > newCardsRemaining) {
+    if (allNewCards.length > remainingReviews.newCardsRemaining) {
       // Shuffle the array
       const shuffledNewCards = [...allNewCards].sort(() => Math.random() - 0.5);
       // Take only up to the limit
-      newCards = shuffledNewCards.slice(0, newCardsRemaining);
+      newCards = shuffledNewCards.slice(0, remainingReviews.newCardsRemaining);
     }
     
     // If we have more review cards than the limit, randomly select up to the limit
-    if (allReviewCards.length > reviewCardsRemaining) {
+    if (allReviewCards.length > remainingReviews.reviewCardsRemaining) {
       // Shuffle the array
       const shuffledReviewCards = [...allReviewCards].sort(() => Math.random() - 0.5);
       // Take only up to the limit
-      reviewCards = shuffledReviewCards.slice(0, reviewCardsRemaining);
+      reviewCards = shuffledReviewCards.slice(0, remainingReviews.reviewCardsRemaining);
     }
     
     // Combine new cards and review cards and shuffle the combined array
@@ -548,19 +598,8 @@ export const deckService = {
       userSettings = await userSettingsService.getUserSettings(userId);
     }
     
-    // Calculate daily limits using the helper method
-    const dailyScaler = deck.dailyScaler || 1.0;
-    const dailyLimits = this._calculateDailyLimits(userSettings, dailyScaler);
-    
     // Get count of total cards
     deck.totalCards = await cardReviewService.countTotalCards(deck.id, userId);
-    
-    // Get counts of cards reviewed in the last 24 hours for this specific deck
-    const reviewCounts = await logService.getReviewCounts({
-      userId,
-      deckId: deck.id,
-      timeWindow: 24
-    });
     
     // Count available new and review cards
     const now = new Date().toISOString();
@@ -596,7 +635,14 @@ export const deckService = {
     deck.newCards = availableNewCards || 0;
     deck.dueCards = availableReviewCards || 0;
     
-    // Calculate remaining reviews using the helper method
+    // Use the utility method to calculate daily limits and remaining reviews
+    const { dailyLimits, reviewCounts, remainingReviews } = await this.calculateDailyLimitsAndRemaining(
+      deck.id,
+      userId,
+      userSettings
+    );
+    
+    // Set the remaining reviews using the helper method
     deck.remainingReviews = this._calculateRemainingReviews(
       dailyLimits,
       reviewCounts,
