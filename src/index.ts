@@ -20,6 +20,13 @@ const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 // In production, the CORS headers are set by Vercel through vercel.json
 app.use(cors());
 
+// Add a delay to all requests in development environment to simulate production latency
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    setTimeout(next, 500); // 500ms delay for all requests
+  });
+}
+
 // Increase JSON body parser limit to 10MB for large CSV data
 app.use(express.json({ limit: '10mb' }));
 // Increase URL-encoded body parser limit to 10MB
