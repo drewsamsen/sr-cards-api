@@ -442,6 +442,69 @@ Authorization: Bearer <token>
 }
 ```
 
+### Get Expanded Explanation for a Card
+
+```
+POST /api/cards/:cardId/expound
+```
+
+This endpoint uses AI to generate a detailed explanation of a card's content, providing additional context, examples, and related information to help with understanding the topic.
+
+#### Request
+
+Headers:
+```
+Authorization: Bearer <token>
+```
+
+No request body is required as the endpoint uses the front and back content of the specified card to generate the explanation.
+
+#### Response
+
+```json
+{
+  "status": "success",
+  "data": {
+    "cardId": "123e4567-e89b-12d3-a456-426614174000",
+    "front": "What is a closure in JavaScript?",
+    "back": "A closure is a function that has access to its own scope, the scope of the outer function, and the global scope.",
+    "explanation": "A closure in JavaScript is a fundamental concept that provides a way for functions to 'remember' and access their lexical scope even when executed outside that scope.\n\nLet's break this down with an example:\n\n```javascript\nfunction createCounter() {\n  let count = 0;  // Private variable\n  \n  return function() {\n    return ++count;  // Accessing the outer function's variable\n  };\n}\n\nconst counter = createCounter();\nconsole.log(counter()); // 1\nconsole.log(counter()); // 2\nconsole.log(counter()); // 3\n```\n\nIn this example:\n\n1. The `createCounter` function creates a variable `count`\n2. It returns an inner function that can access and modify this `count` variable\n3. Even after `createCounter` has finished executing, the returned function still has access to the `count` variable\n\nThis is possible because:\n\n- When a function is created in JavaScript, it forms a closure over the current scope\n- The function maintains a reference to its entire lexical environment\n- Variables in that environment aren't garbage-collected as long as the function exists\n\nClosures are widely used in JavaScript for:\n\n- Data encapsulation and private variables (as shown in the example)\n- Creating function factories\n- Implementing module patterns\n- Handling callbacks and event handlers\n- Managing asynchronous operations\n\nThey're particularly important in functional programming patterns and are one of JavaScript's most powerful features that allow for elegant and maintainable code design."
+  }
+}
+```
+
+#### Error Responses
+
+##### Card Not Found
+
+```json
+{
+  "status": "error",
+  "message": "Card not found or does not belong to the user",
+  "statusCode": 404
+}
+```
+
+##### Authentication Error
+
+```json
+{
+  "status": "error",
+  "message": "Authentication required",
+  "statusCode": 401
+}
+```
+
+##### AI Service Error
+
+```json
+{
+  "status": "error",
+  "message": "Failed to generate explanation",
+  "statusCode": 500
+}
+```
+
 ### Search Cards
 
 ```
