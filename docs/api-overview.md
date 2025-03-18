@@ -155,6 +155,7 @@ The API does not currently implement versioning. Future versions may be accessed
 - `GET /api/cards/review`: Get cards due for review
 - `POST /api/cards/:cardId/review`: Submit a review for a card
 - `GET /api/cards/:id/logs`: Get review history logs for a specific card
+- `POST /api/cards/:cardId/expound`: Get a detailed explanation of a card's content
 
 For detailed information about each endpoint, refer to the specific documentation:
 - [Authentication](./authentication.md)

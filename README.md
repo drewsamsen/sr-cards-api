@@ -17,6 +17,7 @@ A RESTful API built with TypeScript, Node.js, Express.js, PostgreSQL, and Supaba
 - Detailed review metrics and progress tracking
 - User-specific settings and preferences
 - CSV import for bulk card creation
+- AI-powered content explanation and enhancement
 
 ## Documentation
 
@@ -150,6 +151,9 @@ The application supports different environment configurations for development an
    SUPABASE_URL=http://127.0.0.1:54321
    SUPABASE_ANON_KEY=<your-local-anon-key>
    SUPABASE_SERVICE_KEY=<your-local-service-role-key>
+
+   # OpenAI
+   OPENAI_API_KEY=<your-development-openai-api-key>
    ```
 
 2. Production Environment (`.env.production`):
@@ -161,6 +165,9 @@ The application supports different environment configurations for development an
    SUPABASE_URL=<your-supabase-cloud-url>
    SUPABASE_ANON_KEY=<your-production-anon-key>
    SUPABASE_SERVICE_KEY=<your-production-service-key>
+
+   # OpenAI
+   OPENAI_API_KEY=<your-production-openai-api-key>
    ```
 
 #### Switching Environments
@@ -198,6 +205,7 @@ You can use the environment-specific scripts to run the application in different
 - `POST /api/cards/:cardId/review`: Submit a review for a card
 - `PATCH /api/cards/:id`: Update a card
 - `DELETE /api/cards/:id`: Delete a card
+- `POST /api/cards/:cardId/expound`: Get a detailed explanation of a card's content
 
 ### User Settings
 - `GET /api/settings`: Get user settings
