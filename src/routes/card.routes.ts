@@ -70,20 +70,25 @@ router.post('/:cardId/expound', async (req: AuthenticatedRequest, res: Response)
     }
 
     // Create a prompt using the card's front and back content
-    const prompt = `
+    const prompt = `The user already has the following information about the card:
 Card Front: ${card.front}
 Card Back: ${card.back}
 
-Please provide a more detailed explanation of this concept. Include additional context, 
-examples, and related information that would help someone understand this topic better.
+Please provide a brief, additional helpful explanation of this concept. Include additional context, 
+examples, and related information that would help someone understand this topic better. If there is 
+not enough information to provide a helpful explanation, suggest techniques or tips to memorize the 
+information better. If the cards seems to be a vocabulary word, suggest alternate definitions or uses.
+
+The explanation should be concise and to the point, and should not exceed 150 words. Prioritize short 
+sentences and plenty of new lines. Format your response as markdown. 
 `;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: "You are a knowledgeable tutor that helps expand on flashcard content. Provide detailed explanations that enhance the user's understanding of the topic."
+          content: "You are a knowledgeable tutor that helps expand on flashcard content. Provide concise explanations that enhance the user's understanding of the topic."
         },
         {
           role: "user",
