@@ -1,0 +1,47 @@
+# Card API Project Rules
+
+## Code Style Patterns
+- TypeScript with strict type checking is used throughout the project
+- Express.js is used for API routing with RESTful patterns
+- Early returns are preferred for better readability
+- Descriptive variable names with proper typing
+- Use consts for functions (e.g., `const myFunction = () => {}`)
+- Handle errors with appropriate try/catch blocks and error propagation
+
+## Project Structure
+- Routes define endpoints in `src/routes/`
+- Controllers handle request/response in `src/controllers/`
+- Services contain business logic in `src/services/`
+- Models define data structure in `src/models/`
+- Middleware for common request processing in `src/middleware/`
+- Utils for shared helper functions in `src/utils/`
+
+## FSRS Algorithm Implementation
+- The Free Spaced Repetition System algorithm is a critical component
+- Card review scheduling depends on this algorithm
+- All updates to this algorithm should be thoroughly tested
+- Card review flow must follow the correct sequence of operations
+
+## Authentication Patterns
+- Supabase is used for authentication
+- JWT tokens are used for API authorization
+- Protected routes use auth middleware
+- User-specific data must be filtered by user ID for security
+
+## Database Operations
+- Direct SQL queries should be avoided in favor of model methods
+- Batch operations should be used for performance when working with multiple records
+- Transactions should be used when multiple related changes need to be atomic
+- Proper indexing should be implemented for frequently queried columns
+
+## Error Handling
+- API responses should use consistent error formats
+- HTTP status codes should be used appropriately
+- Error messages should be descriptive but not expose sensitive information
+- Validation errors should provide details about the specific validation failures
+
+## Testing
+- Unit tests for critical business logic
+- Integration tests for API endpoints
+- Test helpers in `src/test/` directory
+- Mock external services in tests 
