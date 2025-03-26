@@ -78,7 +78,21 @@ async function loginUser(baseUrl, email, password) {
       password
     });
     
-    log.success(`Logged in successfully`);
+    // Validate response structure
+    if (!response.data || !response.data.data) {
+      log.error('Login response missing expected data structure');
+      log.error(`Response: ${JSON.stringify(response.data)}`);
+      return null;
+    }
+    
+    // Validate token is present
+    if (!response.data.data.token) {
+      log.error('Login successful but token is missing from response');
+      log.error(`Response data: ${JSON.stringify(response.data.data)}`);
+      return null;
+    }
+    
+    log.success(`Logged in successfully with token: ${response.data.data.token.substring(0, 10)}...`);
     return response.data.data;
   } catch (error) {
     log.error(`Error logging in as ${email}: ${error.message}`);

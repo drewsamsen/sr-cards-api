@@ -79,30 +79,54 @@ async function ensureDemoUser() {
     }
     
     // If we confirmed the user already exists, we don't need to recreate decks
-    if (demoUser.last_sign_in_at) {
+    // In production, we should always try to login and verify the token works
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (demoUser.last_sign_in_at && !isProduction) {
       log.success('Demo user already exists with content, no action needed.');
       return;
     }
     
     // Login to get authentication token
-    const loginData = await apiUtils.loginUser(API_BASE_URL, DEMO_EMAIL, DEMO_PASSWORD);
+    log.info('Attempting to login as demo user to verify credentials...');
     
-    if (!loginData || !loginData.token) {
-      log.error('Failed to log in as demo user. Cannot create decks and cards.');
+    try {
+      const loginData = await apiUtils.loginUser(API_BASE_URL, DEMO_EMAIL, DEMO_PASSWORD);
+      
+      if (!loginData) {
+        log.error('Login returned null response. API might not be available at this URL.');
+        log.info(`Is the API server running at ${API_BASE_URL}?`);
+        process.exit(1);
+      }
+      
+      if (!loginData.token) {
+        log.error('Login succeeded but no token was returned. API response format may have changed.');
+        log.info(`Response data: ${JSON.stringify(loginData)}`);
+        process.exit(1);
+      }
+      
+      // Create all decks and cards if this is a new user
+      if (!demoUser.last_sign_in_at || isProduction) {
+        log.info('Creating demo decks and cards...');
+        await createDemoDecksAndCards(loginData.token);
+      }
+      
+      log.success('\nDemo user setup completed successfully!');
+      log.info('\nDemo user credentials:');
+      log.info(`  - Email: ${DEMO_EMAIL}`);
+      log.info(`  - Password: ${DEMO_PASSWORD}`);
+      
+    } catch (loginError) {
+      log.error(`Login attempt failed with error: ${loginError.message}`);
+      log.error('Unable to complete demo user setup without successful login.');
       process.exit(1);
     }
-    
-    // Create all decks and cards
-    await createDemoDecksAndCards(loginData.token);
-    
-    log.success('\nDemo user setup completed successfully!');
-    log.info('\nDemo user credentials:');
-    log.info(`  - Email: ${DEMO_EMAIL}`);
-    log.info(`  - Password: ${DEMO_PASSWORD}`);
-    
   } catch (error) {
     log.error('\nDemo user setup failed!');
     log.error(error.message);
+    if (error.stack) {
+      log.error(`Stack trace: ${error.stack}`);
+    }
     process.exit(1);
   }
 }
