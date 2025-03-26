@@ -15,7 +15,8 @@ const DEMO_USER = {
   fullName: 'Demo User',
   metadata: {
     isDemoUser: true,
-    demoResetInterval: 30 // Minutes until the demo user resets
+    demoResetInterval: 30, // Minutes until the demo user resets
+    theme: 'dark' // Set dark theme as default
   }
 };
 
