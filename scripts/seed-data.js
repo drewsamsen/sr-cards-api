@@ -14,6 +14,9 @@
 const axios = require('axios');
 const { execSync } = require('child_process');
 
+// Configure API base URL - can be overridden by environment variable
+const API_BASE_URL = process.env.API_BASE_URL || 'http://127.0.0.1:3000';
+
 // ANSI color codes for prettier console output
 const colors = {
   reset: '\x1b[0m',
@@ -29,13 +32,24 @@ const colors = {
 
 console.log(`${colors.bright}${colors.blue}Card API Development Environment Setup - Phase 2${colors.reset}\n`);
 console.log(`${colors.dim}This script will seed your database with test data.${colors.reset}\n`);
+console.log(`${colors.cyan}Using API at: ${API_BASE_URL}${colors.reset}\n`);
 
 // Check if the API server is running
 async function checkServerStatus() {
   try {
-    await axios.get('http://localhost:3000/api/health');
+    console.log(`${colors.yellow}→ Checking API server at ${API_BASE_URL}/api/health...${colors.reset}`);
+    const response = await axios.get(`${API_BASE_URL}/api/health`, { timeout: 5000 });
+    console.log(`${colors.green}✓ API server responded with status: ${response.status}${colors.reset}`);
     return true;
   } catch (error) {
+    console.error(`${colors.red}✗ Error connecting to API server: ${error.message}${colors.reset}`);
+    // Log additional details if available
+    if (error.response) {
+      console.error(`${colors.red}Status: ${error.response.status}${colors.reset}`);
+      console.error(`${colors.red}Data: ${JSON.stringify(error.response.data)}${colors.reset}`);
+    } else if (error.request) {
+      console.error(`${colors.red}No response received from server${colors.reset}`);
+    }
     return false;
   }
 }
@@ -56,7 +70,7 @@ function runCommand(command, description) {
 async function createUser(email, password, fullName) {
   try {
     console.log(`${colors.yellow}→ Creating user ${email}...${colors.reset}`);
-    const response = await axios.post('http://localhost:3000/api/auth/register', {
+    const response = await axios.post(`${API_BASE_URL}/api/auth/register`, {
       email,
       password,
       fullName
@@ -69,7 +83,7 @@ async function createUser(email, password, fullName) {
       console.log(`${colors.yellow}⚠ User ${email} already exists${colors.reset}`);
       // Try to login to get the user data
       try {
-        const loginResponse = await axios.post('http://localhost:3000/api/auth/login', {
+        const loginResponse = await axios.post(`${API_BASE_URL}/api/auth/login`, {
           email,
           password
         });
@@ -101,7 +115,7 @@ async function createDecksForUser(token, decks) {
   for (const deck of decks) {
     try {
       console.log(`${colors.yellow}→ Creating deck "${deck.name}"...${colors.reset}`);
-      const response = await axios.post('http://localhost:3000/api/decks', deck, {
+      const response = await axios.post(`${API_BASE_URL}/api/decks`, deck, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -113,7 +127,7 @@ async function createDecksForUser(token, decks) {
         console.log(`${colors.yellow}⚠ Deck "${deck.name}" already exists${colors.reset}`);
         // Try to get the existing deck
         try {
-          const getResponse = await axios.get(`http://localhost:3000/api/decks/slug/${deck.name.toLowerCase().replace(/\s+/g, '-')}`, {
+          const getResponse = await axios.get(`${API_BASE_URL}/api/decks/slug/${deck.name.toLowerCase().replace(/\s+/g, '-')}`, {
             headers: {
               'Authorization': `Bearer ${token}`
             }
@@ -138,7 +152,7 @@ async function createCardsForDeck(token, deckId, cards) {
   for (const card of cards) {
     try {
       console.log(`${colors.yellow}→ Creating card for deck ${deckId}...${colors.reset}`);
-      const response = await axios.post(`http://localhost:3000/api/decks/${deckId}/cards`, {
+      const response = await axios.post(`${API_BASE_URL}/api/decks/${deckId}/cards`, {
         front: card.front,
         back: card.back
       }, {
@@ -181,7 +195,7 @@ async function seedData() {
     
     if (user1) {
       // Login to get token
-      const loginResponse1 = await axios.post('http://localhost:3000/api/auth/login', {
+      const loginResponse1 = await axios.post(`${API_BASE_URL}/api/auth/login`, {
         email: 'testuser1@example.com',
         password: 'password123'
       });
@@ -259,98 +273,199 @@ async function seedData() {
       }
     }
     
-    // Create second test user
+    // Create second test user - this will be our demo user
     const user2 = await createUser(
-      'testuser2@example.com',
-      'password123',
-      'Test User Two'
+      'demo@example.com',
+      'demopassword',
+      'Demo User'
     );
     
     if (user2) {
       // Login to get token
-      const loginResponse2 = await axios.post('http://localhost:3000/api/auth/login', {
-        email: 'testuser2@example.com',
-        password: 'password123'
+      const loginResponse2 = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+        email: 'demo@example.com',
+        password: 'demopassword'
       });
       
       const token2 = loginResponse2.data.data.token;
       
-      // Create decks for second user
+      // Create decks for demo user
       const user2Decks = await createDecksForUser(token2, [
         { 
-          name: 'TypeScript Basics', 
-          description: 'Introduction to TypeScript' 
+          name: 'Spaced Repetition Basics', 
+          description: 'Learn about the spaced repetition technique' 
         },
         { 
-          name: 'SQL Queries', 
-          description: 'Common SQL queries and patterns' 
+          name: 'Memory Techniques', 
+          description: 'Powerful methods to improve memory' 
         },
         { 
-          name: 'Git Commands', 
-          description: 'Essential Git commands for daily use' 
+          name: 'Tech Startup Buzzwords', 
+          description: 'Essential terminology for navigating the startup ecosystem' 
+        },
+        {
+          name: 'SAT Vocabulary',
+          description: 'Advanced vocabulary words commonly found on standardized tests'
+        },
+        {
+          name: 'Logical Fallacies',
+          description: 'Common reasoning errors that undermine arguments'
         }
       ]);
       
-      // Add cards to TypeScript Basics deck
+      // Add cards to Spaced Repetition Basics deck
       if (user2Decks.length > 0) {
         await createCardsForDeck(token2, user2Decks[0].id, [
           {
-            front: "What is TypeScript?",
-            back: "TypeScript is a strongly typed programming language that builds on JavaScript, giving you better tooling at any scale."
+            front: "What is spaced repetition?",
+            back: "Spaced repetition is a learning technique that incorporates increasing intervals of time between subsequent review of previously learned material to exploit the psychological spacing effect."
           },
           {
-            front: "What is an interface in TypeScript?",
-            back: "An interface is a way to define a contract on a function or object in TypeScript."
+            front: "Who developed the first spaced repetition system?",
+            back: "Sebastian Leitner developed the Leitner system in the 1970s, which is considered one of the first practical spaced repetition systems."
           },
           {
-            front: "What is the 'any' type?",
-            back: "The 'any' type is a type that disables type checking and effectively allows all types to be used."
+            front: "What is the forgetting curve?",
+            back: "The forgetting curve, discovered by Hermann Ebbinghaus, illustrates the decline of memory retention over time. It shows how information is lost when there is no attempt to retain it."
           }
         ]);
       }
       
-      // Add cards to SQL Queries deck
+      // Add cards to Memory Techniques deck
       if (user2Decks.length > 1) {
         await createCardsForDeck(token2, user2Decks[1].id, [
           {
-            front: "What is a JOIN in SQL?",
-            back: "A JOIN clause is used to combine rows from two or more tables, based on a related column between them."
+            front: "What is the method of loci?",
+            back: "The method of loci (memory palace) is a mnemonic device that relies on spatial memory to visualize familiar locations to help remember information."
           },
           {
-            front: "What is the difference between WHERE and HAVING?",
-            back: "WHERE filters rows before grouping, while HAVING filters groups after GROUP BY is applied."
+            front: "What is chunking in memory techniques?",
+            back: "Chunking is a memory technique that involves grouping individual pieces of information into larger units to make them easier to remember."
           },
           {
-            front: "What is an INDEX in SQL?",
-            back: "An INDEX is a database structure that improves the speed of data retrieval operations on a database table."
+            front: "What is the major system?",
+            back: "The major system is a mnemonic technique used to aid in memorizing numbers by converting them into more memorable consonant sounds, then into words by adding vowels."
           }
         ]);
       }
       
-      // Add cards to Git Commands deck
+      // Add cards to Tech Startup Buzzwords deck
       if (user2Decks.length > 2) {
         await createCardsForDeck(token2, user2Decks[2].id, [
           {
-            front: "What does 'git pull' do?",
-            back: "git pull fetches changes from a remote repository and merges them into the current branch."
+            front: "MVP",
+            back: "Minimum Viable Product — aka the version that barely works but proves we're \"building in public.\""
           },
           {
-            front: "What is the difference between 'git merge' and 'git rebase'?",
-            back: "git merge creates a new commit that combines two branches, while git rebase moves or combines a sequence of commits to a new base commit."
+            front: "Pivot",
+            back: "When your original idea flops and you change direction while pretending it was intentional."
           },
           {
-            front: "How do you create a new branch in Git?",
-            back: "Use 'git branch <branch-name>' to create a new branch, then 'git checkout <branch-name>' to switch to it. Or use 'git checkout -b <branch-name>' to do both in one command."
+            front: "Runway",
+            back: "The number of months until we run out of money and start calling angel investors \"again.\""
+          },
+          {
+            front: "Disruptive Innovation",
+            back: "We do what others do, but with an app and a pitch deck."
+          },
+          {
+            front: "Unicorn",
+            back: "A startup valued at $1 billion — often before it makes a single dollar."
+          },
+          {
+            front: "Growth Hacking",
+            back: "Marketing, but with more caffeine and no budget."
+          },
+          {
+            front: "Product-Market Fit",
+            back: "That magical moment when people actually want what you're building — still loading…"
+          },
+          {
+            front: "Web3",
+            back: "Something to do with crypto, ownership, and vibes. Still unclear."
+          },
+          {
+            front: "Burn Rate",
+            back: "How fast we're setting investor money on fire each month."
+          },
+          {
+            front: "Scalable",
+            back: "Sounds impressive, means \"we hope this can make money someday.\""
+          },
+          {
+            front: "Thought Leader",
+            back: "Someone who posts long threads on X (formerly Twitter) and uses phrases like \"the future of work.\""
+          }
+        ]);
+      }
+      
+      // Add cards to SAT Vocabulary deck
+      if (user2Decks.length > 3) {
+        await createCardsForDeck(token2, user2Decks[3].id, [
+          {
+            front: "Abate",
+            back: "v. /uh-BAYT/\n\nto reduce in intensity or amount\n\n\"The storm finally began to abate, and the sun peeked through the clouds.\""
+          },
+          {
+            front: "Cacophony",
+            back: "n. /kuh-KAW-fuh-nee/\n\na harsh, discordant mixture of sounds\n\n\"The cacophony of car horns made it impossible to concentrate.\""
+          },
+          {
+            front: "Ubiquitous",
+            back: "adj. /yoo-BIK-wih-tuss/\n\npresent or existing everywhere\n\n\"Cell phones are so ubiquitous that it's hard to imagine life without them.\""
+          },
+          {
+            front: "Mollify",
+            back: "v. /MAH-luh-fy/\n\nto calm or soothe someone who is angry or upset\n\n\"She tried to mollify her friend by offering a heartfelt apology.\""
+          },
+          {
+            front: "Lethargic",
+            back: "adj. /luh-THAR-jik/\n\nsluggish, lacking energy or enthusiasm\n\n\"After staying up all night, he felt too lethargic to get out of bed.\""
+          }
+        ]);
+      }
+      
+      // Add cards to Logical Fallacies deck
+      if (user2Decks.length > 4) {
+        await createCardsForDeck(token2, user2Decks[4].id, [
+          {
+            front: "Ad Hominem",
+            back: "Attacking the person instead of addressing their argument.\n\nExample: \"You can't trust his economic theory because he went bankrupt once.\""
+          },
+          {
+            front: "Straw Man",
+            back: "Misrepresenting someone's argument to make it easier to attack.\n\nExample: \"Vegans want us all to stop eating any animal products immediately, which would destroy the economy.\""
+          },
+          {
+            front: "False Dilemma",
+            back: "Presenting only two options when more exist.\n\nExample: \"Either we cut education funding or we go bankrupt. There's no other choice.\""
+          },
+          {
+            front: "Appeal to Authority",
+            back: "Claiming something is true because an authority figure says it is, without supporting evidence.\n\nExample: \"Dr. Smith has a PhD, so her claim about climate change must be correct.\""
+          },
+          {
+            front: "Slippery Slope",
+            back: "Arguing that a small step will inevitably lead to extreme consequences.\n\nExample: \"If we allow same-sex marriage, next people will want to marry their pets!\""
+          },
+          {
+            front: "Post Hoc Ergo Propter Hoc",
+            back: "Assuming that because one event followed another, the first caused the second.\n\nExample: \"I wore my lucky socks and we won the game, so my socks caused our victory.\""
+          },
+          {
+            front: "Circular Reasoning",
+            back: "Making an argument where the conclusion is included in the premise.\n\nExample: \"The Bible is true because it says so in the Bible.\""
           }
         ]);
       }
     }
 
     console.log(`\n${colors.green}${colors.bright}✓ Phase 2 setup completed successfully!${colors.reset}`);
-    console.log(`\n${colors.cyan}You can now use the API with either of these accounts:${colors.reset}`);
+    console.log(`\n${colors.cyan}You can now use the API with these accounts:${colors.reset}`);
     console.log(`  - Email: ${colors.cyan}testuser1@example.com${colors.reset}`);
-    console.log(`  - Email: ${colors.cyan}testuser2@example.com${colors.reset}`);
-    console.log(`  - Password: ${colors.cyan}password123${colors.reset} (same for both)`);
+    console.log(`  - Password: ${colors.cyan}password123${colors.reset}`);
+    console.log(`  - Email: ${colors.cyan}demo@example.com${colors.reset}`);
+    console.log(`  - Password: ${colors.cyan}demopassword${colors.reset}`);
     
   } catch (error) {
     console.error(`\n${colors.red}${colors.bright}✗ Setup failed!${colors.reset}`);
