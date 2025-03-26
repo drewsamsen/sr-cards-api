@@ -7,6 +7,7 @@ This guide provides instructions for setting up and working with the Card API in
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
   - [Quick Setup](#quick-setup)
+  - [Alternative Setup (Two-Phase Process)](#alternative-setup-two-phase-process)
   - [Manual Setup](#manual-setup)
 - [Development Workflow](#development-workflow)
   - [Running the API](#running-the-api)
@@ -28,7 +29,35 @@ This guide provides instructions for setting up and working with the Card API in
 
 ### Quick Setup
 
-For a complete setup with a two-phase process:
+For a complete setup in a single step:
+
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the local Supabase instance:
+   ```bash
+   npm run supabase:start
+   ```
+4. Run the complete setup process:
+   ```bash
+   npm run setup:all
+   ```
+   This will:
+   - Reset the database (apply migrations)
+   - Start the API server temporarily
+   - Seed the database with test users and sample data
+   - Shut down the server
+   
+5. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+### Alternative Setup (Two-Phase Process)
+
+If you prefer the original two-phase process:
 
 1. Clone the repository
 2. Install dependencies:
@@ -49,7 +78,7 @@ For a complete setup with a two-phase process:
    ```
 6. In a new terminal, run Phase 2 setup (data seeding):
    ```bash
-   npm run seed:data
+   npm run seed:test-users
    ```
 
 ### Manual Setup
@@ -134,38 +163,40 @@ This will open the Supabase Studio in your browser.
 
 ### Setup Process
 
-The setup process is split into two phases:
+The project offers two ways to set up test data:
 
-1. **Phase 1 (Database Setup)**:
-   - Initializes the database schema
-   - Applies all migrations
-   - Run with `npm run setup`
-   - Does not require the API server to be running
+1. **Single-Step Setup (Recommended)**:
+   - Run `npm run setup:all` after starting Supabase
+   - This command handles everything: database reset, server startup, data seeding, and shutdown
+   - After completion, you can simply run `npm run dev` to start the server
 
-2. **Phase 2 (Data Seeding)**:
-   - Creates test users and sample data
-   - Requires the API server to be running
-   - Run with `npm run seed:data` after starting the server
-   - Creates two test users, each with their own decks
-   - Adds sample flashcards to each deck
+2. **Two-Phase Setup (Alternative)**:
+   - Phase 1 (Database Setup): Run `npm run setup`
+   - Start the server: Run `npm run dev`
+   - Phase 2 (Data Seeding): Run `npm run seed:test-users` in a new terminal
 
-This two-phase approach ensures that the API server is available when creating test data through the API endpoints.
+Either approach will create the same test users and sample data.
 
 ### Test Users
 
 The seed data script creates two test users with the following credentials:
 
-- **User 1**:
+- **Test User**:
   - Email: testuser1@example.com
   - Password: password123
   - Decks: JavaScript Fundamentals, React Hooks, CSS Grid & Flexbox
   - Each deck contains 3 sample flashcards
 
-- **User 2**:
-  - Email: testuser2@example.com
-  - Password: password123
-  - Decks: TypeScript Basics, SQL Queries, Git Commands
-  - Each deck contains 3 sample flashcards
+- **Demo User**:
+  - Email: demo@example.com
+  - Password: demopassword
+  - Decks: 
+    - Spaced Repetition Basics
+    - Memory Techniques
+    - Tech Startup Buzzwords (with humorous definitions)
+    - SAT Vocabulary
+    - Logical Fallacies
+  - Each deck contains multiple sample flashcards
 
 To create test users manually:
 
@@ -236,4 +267,4 @@ API documentation is available in the `docs` directory:
 - [API Overview](docs/api-overview.md)
 - [Authentication](docs/authentication.md)
 - [Decks](docs/decks.md)
-- [Project Structure](docs/project-structure.md) 
+- [Project Structure](docs/project-structure.md)

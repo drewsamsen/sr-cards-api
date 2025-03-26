@@ -21,7 +21,12 @@
     "supabase:status": "npx supabase status",
     "supabase:studio": "open http://127.0.0.1:54323",
     "setup": "node scripts/setup-dev.js",
-    "seed:data": "node scripts/seed-data.js"
+    "setup:all": "node scripts/complete-setup.js",
+    "seed:data": "node scripts/seed-data.js",
+    "seed:test-users": "node scripts/seed-data.js",
+    "demo:setup": "node scripts/setup-demo-user.js",
+    "demo:load": "npx ts-node src/scripts/loadDemoData.ts",
+    "demo:reset": "npx ts-node -e \"require('./dist/services/demoService').default.checkDemoUsersForReset()\""
   },
   "keywords": [],
   "author": "",
