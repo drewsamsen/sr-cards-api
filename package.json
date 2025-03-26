@@ -9,7 +9,7 @@
     "start:prod": "NODE_ENV=production node dist/index.js",
     "dev": "NODE_ENV=development nodemon --exec ts-node src/index.ts",
     "build": "NODE_ENV=production tsc -p tsconfig.build.json",
-    "vercel-build": "npm run build",
+    "vercel-build": "npm run build && node scripts/ensure-demo-user.js",
     "build:dev": "NODE_ENV=development tsc -p tsconfig.build.json",
     "build:prod": "NODE_ENV=production tsc -p tsconfig.build.json",
     "lint": "eslint . --ext .ts",
@@ -24,6 +24,7 @@
     "setup:all": "node scripts/complete-setup.js",
     "seed:data": "node scripts/seed-data.js",
     "seed:test-users": "node scripts/seed-data.js",
+    "ensure-demo-user": "node scripts/ensure-demo-user.js",
     "demo:setup": "node scripts/setup-demo-user.js",
     "demo:load": "npx ts-node src/scripts/loadDemoData.ts",
     "demo:reset": "npx ts-node -e \"require('./dist/services/demoService').default.checkDemoUsersForReset()\""

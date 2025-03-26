@@ -47,6 +47,9 @@ card-api/
 │   └── index.ts        # Application entry point
 ├── supabase/
 │   └── migrations/     # Database migrations
+├── scripts/
+│   ├── shared/         # Shared utilities for scripts
+│   └── ...             # Various setup and utility scripts
 ├── docs/               # Documentation
 ├── .env                # Environment variables
 ├── .gitignore          # Git ignore file
@@ -54,6 +57,18 @@ card-api/
 ├── tsconfig.json       # TypeScript configuration
 └── README.md           # Project documentation
 ```
+
+## Shared Utilities
+
+The project includes shared utilities in the `scripts/shared/` directory to reduce code duplication between scripts:
+
+- `api-utils.js` - Common functions for API interactions (deck creation, card creation, etc.)
+- `demo-content.js` - Shared demo user content (decks, cards, and user configuration)
+- `supabase-utils.js` - Utilities for working directly with the Supabase client
+
+These shared modules are used by:
+- `ensure-demo-user.js` - For ensuring the demo user exists in production
+- `seed-data.js` - For creating test data in the development environment
 
 ## Getting Started
 
@@ -262,6 +277,10 @@ This approach allows users to validate their data before committing to the impor
 - Detailed validation with specific error messages
 - Preview of the first 10 rows
 - Automatic expiration of pending imports after 30 minutes
+
+## Deployment
+
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## License
 
