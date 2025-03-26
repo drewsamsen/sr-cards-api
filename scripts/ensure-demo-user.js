@@ -23,7 +23,8 @@ const apiUtils = require('./shared/api-utils');
 // Configuration
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const API_BASE_URL = process.env.API_URL || process.env.VERCEL_URL || 'http://localhost:3000';
+const API_BASE_URL = process.env.API_URL || 
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
 const DEMO_EMAIL = process.env.DEMO_USER_EMAIL || DEMO_USER.email;
 const DEMO_PASSWORD = process.env.DEMO_USER_PASSWORD || DEMO_USER.password;
 
