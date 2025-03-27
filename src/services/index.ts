@@ -6,7 +6,4 @@ export { userSettingsService } from './user-settings.service';
 export { logService } from './log.service';
 export { csvService } from './csv.service';
 export { cardReviewService } from './card-review.service';
-export { importService } from './import.service';
-
-// Initialize services that need to be started
-import './demoService'; 
+export { importService } from './import.service'; 
