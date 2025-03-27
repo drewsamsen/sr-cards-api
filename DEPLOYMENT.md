@@ -4,7 +4,7 @@ This document outlines the deployment process for the Card API application.
 
 ## Deployment Process
 
-The application is set up for deployment on platforms like Vercel or similar services that support Node.js applications.
+The application is set up for deployment on platforms like Vercel or similar services that support Node.js applications. It is currently deployed and running at [echo.cards](https://echo.cards).
 
 ### Deployment Steps
 

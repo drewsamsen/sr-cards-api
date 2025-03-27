@@ -1,6 +1,6 @@
 # Card API
 
-A RESTful API built with TypeScript, Node.js, Express.js, PostgreSQL, and Supabase authentication for a flashcard review application with spaced repetition.
+A RESTful API built with TypeScript, Node.js, Express.js, PostgreSQL, and Supabase authentication for a flashcard review application with spaced repetition. This API powers [echo.cards](https://echo.cards), a web-based flashcard application for efficient learning.
 
 ## Features
 
