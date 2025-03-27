@@ -13,6 +13,12 @@ require('dotenv').config();
 const { log } = require('./shared/api-utils');
 const { createSupabaseAdminClient } = require('./shared/supabase-utils');
 
+// Set NODE_ENV to 'production' if running on Vercel but NODE_ENV is not set
+if (!process.env.NODE_ENV && process.env.VERCEL) {
+  process.env.NODE_ENV = 'production';
+  console.log('NODE_ENV was not set. Automatically set to "production" for Vercel deployment.');
+}
+
 // List of required environment variables
 const requiredVariables = [
   {
@@ -32,12 +38,6 @@ const requiredVariables = [
     description: 'Anonymous key for public Supabase access',
     validator: (value) => value && value.startsWith('eyJ'),
     suggestion: 'Should start with "eyJ" and be quite long. Get this from your Supabase dashboard.'
-  },
-  {
-    name: 'NODE_ENV',
-    description: 'Environment (development/production)',
-    validator: (value) => ['development', 'production', 'test'].includes(value),
-    suggestion: 'Should be one of: development, production, test'
   }
 ];
 
