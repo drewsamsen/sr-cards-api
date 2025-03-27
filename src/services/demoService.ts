@@ -27,29 +27,6 @@ interface DemoUser {
 class DemoService {
   // Cache of known demo users to avoid frequent DB checks
   private demoUsersCache: Map<string, DemoUser> = new Map();
-  private isPollingStarted: boolean = false;
-
-  /**
-   * Start the polling mechanism for checking demo users
-   * that need to be reset
-   */
-  public startPolling(): void {
-    if (this.isPollingStarted) {
-      logger.info('Demo user polling already started, skipping');
-      return;
-    }
-
-    logger.info('Starting demo user polling');
-    this.isPollingStarted = true;
-    
-    // Check immediately on startup
-    this.checkDemoUsersForReset();
-    
-    // Then check every minute
-    setInterval(() => {
-      this.checkDemoUsersForReset();
-    }, 60 * 1000); // Check every minute
-  }
 
   /**
    * Find all users that are flagged as demo users in their settings
@@ -68,14 +45,14 @@ class DemoService {
       }
 
       if (!data || data.length === 0) {
-        // Also check for isDemoUser in raw_user_meta_data (auth.users)
+        // Also check for isDemoUser in raw_user_meta_data (auth users)
         const { data: authUsers, error: authError } = await supabaseAdmin
           .from('auth.users')
           .select('id, email, raw_user_meta_data, updated_at')
           .filter('raw_user_meta_data->isDemoUser', 'eq', true);
 
         if (authError) {
-          logger.error('Error finding demo users in auth.users:', authError);
+          logger.error('Error finding demo users in auth users:', authError);
           return [];
         }
 
@@ -102,7 +79,7 @@ class DemoService {
       // Process user_settings records
       const demoUsers = await Promise.all(
         data.map(async record => {
-          // Get user info from auth.users
+          // Get user info from auth users
           const { data: userData, error: userError } = await supabaseAdmin
             .from('auth.users')
             .select('email, raw_user_meta_data')
@@ -139,45 +116,6 @@ class DemoService {
     } catch (error) {
       logger.error('Unexpected error in getDemoUsers:', error);
       return [];
-    }
-  }
-
-  /**
-   * Check which demo users are due for a reset
-   */
-  public async checkDemoUsersForReset(): Promise<void> {
-    try {
-      logger.info('Checking for demo users that need reset');
-      
-      // Get all demo users
-      const demoUsers = await this.getDemoUsers();
-      
-      if (demoUsers.length === 0) {
-        logger.info('No demo users found');
-        return;
-      }
-      
-      logger.info(`Found ${demoUsers.length} demo users`);
-      
-      // Check each user if they need a reset
-      for (const user of demoUsers) {
-        try {
-          const now = new Date();
-          const minutesSinceLastReset = (now.getTime() - user.lastResetAt.getTime()) / (60 * 1000);
-          
-          logger.info(`Demo user ${user.email} (${user.id}): Last reset ${minutesSinceLastReset.toFixed(1)} minutes ago, interval: ${user.resetIntervalMinutes} minutes`);
-          
-          if (minutesSinceLastReset >= user.resetIntervalMinutes) {
-            logger.info(`Demo user ${user.email} (${user.id}) is due for reset`);
-            await this.resetDemoUser(user.id);
-          }
-        } catch (userError) {
-          logger.error(`Error processing demo user ${user.id}:`, userError);
-          // Continue with other users
-        }
-      }
-    } catch (error) {
-      logger.error('Error checking demo users for reset:', error);
     }
   }
 
@@ -249,142 +187,209 @@ class DemoService {
   private async resetUserSettings(userId: string): Promise<void> {
     logger.info(`Resetting settings for user ${userId}`);
     
-    // Use the template settings
-    const templateSettings = demoUserTemplate.settings;
-    
-    // Update the user's settings
-    const updated = await userSettingsService.updateUserSettings(userId, templateSettings);
-    
-    if (!updated) {
-      throw new Error('Failed to update user settings');
+    try {
+      const settings = {
+        ...demoUserTemplate.settings,
+        isDemoUser: true,
+        demoResetInterval: 30 // Minutes until reset
+      };
+      
+      await userSettingsService.updateUserSettings(userId, settings);
+    } catch (error) {
+      logger.error(`Error resetting user settings for ${userId}:`, error);
+      throw error;
     }
   }
 
   /**
-   * Create fresh demo content for the user
+   * Create demo content based on templates
    */
   private async createDemoContent(userId: string): Promise<void> {
     logger.info(`Creating demo content for user ${userId}`);
     
-    // Process each deck in the template
-    for (const deckTemplate of demoContentTemplate.decks) {
-      try {
-        // Create the deck
-        const deckData: CreateDeckDTO = {
+    try {
+      // Get template data
+      const decksToCreate = demoContentTemplate.decks;
+      
+      // Create each deck and its cards
+      for (const deckTemplate of decksToCreate) {
+        const createDeckDto: CreateDeckDTO = {
           name: deckTemplate.name,
           description: deckTemplate.description,
-          dailyScaler: 1.0 // Default scaling factor
+          dailyScaler: 1.0
         };
         
-        const deck = await deckService.createDeck(deckData, userId);
+        // Create the deck
+        const deck = await deckService.createDeck(createDeckDto, userId);
         
         if (!deck) {
-          logger.error(`Failed to create deck ${deckTemplate.name} for user ${userId}`);
+          logger.error(`Failed to create deck "${deckTemplate.name}" for user ${userId}`);
           continue;
         }
         
         // Create cards for this deck
-        for (const cardTemplate of deckTemplate.cards) {
-          try {
-            const cardData: CreateCardDTO = {
+        if (deckTemplate.cards && deckTemplate.cards.length > 0) {
+          for (const cardTemplate of deckTemplate.cards) {
+            const createCardDto: CreateCardDTO = {
               front: cardTemplate.front,
               back: cardTemplate.back
             };
             
-            await cardService.createCard(cardData, deck.id, userId);
-          } catch (cardError) {
-            logger.error(`Error creating card in deck ${deck.id}:`, cardError);
-            // Continue with other cards
+            try {
+              await cardService.createCard(createCardDto, deck.id, userId);
+            } catch (cardError) {
+              logger.error(`Error creating card in deck ${deck.id}:`, cardError);
+              // Continue with next card
+            }
           }
         }
-      } catch (deckError) {
-        logger.error(`Error creating deck ${deckTemplate.name}:`, deckError);
-        // Continue with other decks
       }
+      
+      logger.info(`Successfully created demo content for user ${userId}`);
+    } catch (error) {
+      logger.error(`Error creating demo content for ${userId}:`, error);
+      throw error;
     }
   }
 
   /**
-   * Update the last reset timestamp
+   * Update last reset timestamp
    */
   private async updateLastResetTimestamp(userId: string): Promise<void> {
-    logger.info(`Updating last reset timestamp for user ${userId}`);
+    const now = new Date();
     
-    // Update the cache
-    const cachedUser = this.demoUsersCache.get(userId);
-    if (cachedUser) {
-      cachedUser.lastResetAt = new Date();
-      this.demoUsersCache.set(userId, cachedUser);
+    try {
+      // Update user metadata
+      const { error } = await supabaseAdmin
+        .from('auth.users')
+        .update({
+          updated_at: now.toISOString()
+        })
+        .eq('id', userId);
+      
+      if (error) {
+        logger.error(`Error updating last reset timestamp for user ${userId}:`, error);
+      }
+    } catch (error) {
+      logger.error(`Error updating last reset timestamp for user ${userId}:`, error);
     }
-    
-    // No need to update the database as the updated_at column will be
-    // automatically updated when we save the settings
   }
 
   /**
-   * Ensure a demo user exists with proper setup
+   * Ensure that a demo user exists and has content
+   * Creates one if it doesn't exist
    */
-  public async ensureDemoUserExists(): Promise<string | null> {
+  public async ensureDemoUserExists(): Promise<string> {
+    logger.info('Ensuring demo user exists');
+    
     try {
-      logger.info('Ensuring demo user exists');
+      // Check if the demo user already exists
+      const { data, error } = await supabaseAdmin
+        .from('auth.users')
+        .select('id')
+        .eq('email', demoUserTemplate.email)
+        .single();
       
-      // Check if demo user already exists
-      const demoUsers = await this.getDemoUsers();
-      
-      // If demo user with the template email exists, return its ID
-      const existingDemoUser = demoUsers.find(
-        user => user.email === demoUserTemplate.email
-      );
-      
-      if (existingDemoUser) {
-        logger.info(`Demo user already exists with ID ${existingDemoUser.id}`);
-        return existingDemoUser.id;
+      if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+        logger.error('Error checking for demo user:', error);
+        throw error;
       }
       
-      // Create new demo user
-      logger.info('Creating new demo user');
+      if (data && data.id) {
+        logger.info(`Demo user already exists with ID: ${data.id}`);
+        
+        // Ensure demo user settings
+        await this.ensureDemoUserSettings(data.id);
+        
+        return data.id;
+      }
       
+      // Create the demo user since it doesn't exist
+      return await this.createDemoUser();
+    } catch (error) {
+      logger.error('Error ensuring demo user exists:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new demo user
+   */
+  private async createDemoUser(): Promise<string> {
+    logger.info('Creating new demo user');
+    
+    try {
       // 1. Create user in auth.users
-      const { data: userData, error: userError } = await supabaseAdmin.auth.admin.createUser({
+      const { data, error } = await supabaseAdmin.auth.admin.createUser({
         email: demoUserTemplate.email,
         password: demoUserTemplate.password,
         email_confirm: true,
         user_metadata: {
           full_name: demoUserTemplate.fullName,
-          ...demoUserTemplate.metadata
+          isDemoUser: true,
+          demoResetInterval: 30
         }
       });
       
-      if (userError || !userData?.user) {
-        logger.error('Error creating demo user:', userError);
-        return null;
+      if (error) {
+        logger.error('Error creating demo user:', error);
+        throw error;
       }
       
-      const userId = userData.user.id;
-      logger.info(`Created demo user with ID ${userId}`);
+      const userId = data.user.id;
+      logger.info(`Created demo user with ID: ${userId}`);
       
-      // 2. Create user settings
-      await userSettingsService.createDefaultSettings(userId);
+      // 2. Ensure settings are set up
+      await this.ensureDemoUserSettings(userId);
       
-      // 3. Update user settings with template values
-      await userSettingsService.updateUserSettings(userId, demoUserTemplate.settings);
-      
-      // 4. Create demo content
+      // 3. Create initial content
       await this.createDemoContent(userId);
       
-      // 5. Update cache
-      this.demoUsersCache.set(userId, {
-        id: userId,
-        email: demoUserTemplate.email,
-        lastResetAt: new Date(),
-        resetIntervalMinutes: demoUserTemplate.metadata.demoResetInterval
-      });
-      
-      logger.info(`Demo user setup completed for ${userId}`);
       return userId;
     } catch (error) {
-      logger.error('Error ensuring demo user exists:', error);
-      return null;
+      logger.error('Error creating demo user:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Ensure the demo user has the required settings
+   */
+  private async ensureDemoUserSettings(userId: string): Promise<void> {
+    logger.info(`Ensuring demo user settings for user ${userId}`);
+    
+    try {
+      // Check if settings exist
+      const { data, error } = await supabaseAdmin
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 = not found
+        logger.error(`Error checking settings for user ${userId}:`, error);
+      }
+      
+      // Create or update settings
+      const settings = {
+        ...demoUserTemplate.settings,
+        isDemoUser: true,
+        demoResetInterval: 30
+      };
+      
+      if (!data) {
+        // Create new settings
+        await userSettingsService.createDefaultSettings(userId);
+        await userSettingsService.updateUserSettings(userId, settings);
+      } else {
+        // Update existing settings
+        await userSettingsService.updateUserSettings(userId, settings);
+      }
+      
+      logger.info(`Demo user settings ensured for user ${userId}`);
+    } catch (error) {
+      logger.error(`Error ensuring demo user settings for ${userId}:`, error);
+      throw error;
     }
   }
 }

@@ -63,9 +63,22 @@ card-api/
 The project includes shared utilities in the `scripts/shared/` directory to reduce code duplication between scripts:
 
 - `api-utils.js` - Common functions for API interactions (deck creation, card creation, etc.)
+- `demo-content.js` - Shared demo user content used by development scripts
 - `supabase-utils.js` - Utilities for working directly with the Supabase client
 
 These shared modules are used by scripts like `seed-data.js` for creating test data in the development environment.
+
+## Demo User
+
+The application provides a demo user feature:
+
+- Demo user with pre-configured credentials (email: `demo@example.com`, password: `demopassword`)
+- Pre-populated with sample flashcard decks and cards
+- Created during the development setup process
+- Can be manually reset if needed 
+- No automatic content refresh in the serverless environment
+
+This feature allows quick testing and demonstration of the application without creating a new user account.
 
 ## Getting Started
 

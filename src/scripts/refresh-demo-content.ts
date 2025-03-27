@@ -30,20 +30,11 @@ async function main() {
     
     if (success) {
       logger.info('Successfully refreshed demo user content');
+      process.exit(0);
     } else {
       logger.error('Failed to refresh demo user content');
       process.exit(1);
     }
-    
-    // Start the polling mechanism to keep checking for demo users
-    logger.info('Starting demo user polling mechanism');
-    demoService.startPolling();
-    
-    logger.info('Demo user content refresh and polling started successfully');
-    logger.info('Press Ctrl+C to exit...');
-    
-    // Keep the script running for polling
-    process.stdin.resume();
   } catch (error) {
     logger.error('Unexpected error in refresh-demo-content script:', error);
     process.exit(1);
