@@ -29,14 +29,6 @@ The Card API follows a layered architecture with clear separation of concerns:
 - Daily review limits and tracking
 - Learning metrics and progress tracking
 
-### Demo User System
-- Automated demo user management via DemoService
-- Periodic content refreshing based on configurable intervals
-- JSON template-based approach for demo content
-- Multi-level detection for demo users (metadata + settings)
-- Self-healing mechanisms with retry logic and SQL-level backup functions
-- In-memory caching for efficiency with automatic invalidation
-
 ## Design Patterns
 
 ### Singleton Services
@@ -46,7 +38,8 @@ The application uses singleton service instances for managing different aspects 
 - `deckService` - Deck management and card organization
 - `userSettingsService` - User preferences and settings
 - `fsrsService` - FSRS algorithm implementation
-- `demoService` - Demo user management and content resetting
+- `logService` - Logging and activity tracking
+- `importService` - CSV import functionality
 
 ### Repository Pattern
 Data access is abstracted through service modules that interact with the Supabase client, providing a clean separation between business logic and data access.
@@ -56,9 +49,6 @@ Data Transfer Objects (DTOs) are used to define the structure of data being tran
 
 ### Error Handling Pattern
 Centralized error handling with detailed logging and custom error classes for different types of errors.
-
-### Polling Pattern
-The DemoService implements a polling pattern to periodically check for demo users needing a content reset, running on a configurable interval to minimize resource usage while maintaining fresh demo content.
 
 ## API Design
 
@@ -81,14 +71,6 @@ The DemoService implements a polling pattern to periodically check for demo user
 3. Server applies FSRS algorithm to calculate next review date
 4. Card state and scheduling are updated
 5. Review history is logged
-
-### Demo User Reset Flow
-1. DemoService polls for demo users periodically
-2. System checks if reset interval has passed for each demo user
-3. If reset is needed, all user content is deleted
-4. Fresh content is created from JSON templates
-5. User settings are restored to default values
-6. Reset timestamp is updated to restart the interval
 
 ## Database Schema
 
