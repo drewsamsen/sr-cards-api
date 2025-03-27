@@ -1,47 +1,52 @@
 # Active Context
 
 ## Current Work Focus
-The current focus is on initializing the memory bank for the Card API project. This involves documenting the project's key aspects, architecture, and progress to provide a comprehensive foundation for future development work.
+The current focus is on implementing and fixing the automatic demo user management system. This involves creating a DemoService that handles both the creation and periodic resetting of demo users, ensuring they always have fresh content for demonstration purposes. We're also addressing issues with user settings persistence and improving error handling throughout the system.
 
 ## Recent Changes
-- Created the memory bank structure
-- Documented project brief, product context, system patterns, and technical context
-- Established baseline documentation for the project
+- Created a new DemoService that automatically manages demo users
+- Developed JSON template files for demo user settings and content
+- Implemented polling mechanism for automatic content refreshing
+- Removed manual demo user creation scripts from the deployment process
+- Added SQL migration for ensuring demo user settings consistency
+- Improved error handling and added retry logic for user creation and settings updates
 
 ## Next Steps
-- Review the codebase to understand the current implementation details
-- Identify any gaps between documented architecture and actual implementation
-- Document the current progress and status of the project
-- Create a list of potential improvements or features to implement
+- Monitor the production deployment to ensure demo users are correctly initialized
+- Verify that demo content resets are working as expected
+- Consider additional improvements to logging to better diagnose issues
+- Review remaining deployment scripts for further optimization
+- Document the demo user system thoroughly for future developers
 
 ## Active Decisions and Considerations
 
 ### Architecture Decisions
-- The project follows a layered architecture with clear separation of concerns
-- Supabase is used for authentication and database management
-- The FSRS algorithm is implemented for spaced repetition scheduling
+- Moved from script-based demo user creation to an automated service approach
+- Implemented dual-layer verification for demo users (both auth metadata and user settings)
+- Added SQL-level fallback mechanisms for critical functionality
+- Ensured clear separation between development data seeding and production demo users
 
 ### Implementation Considerations
-- Code quality and maintainability should be prioritized
-- Follow TypeScript best practices for type safety
-- Ensure proper error handling and validation throughout the API
-- Optimize database queries for performance
-- Implement comprehensive testing for critical components
+- Added comprehensive error handling with retries for all critical operations
+- Implemented thorough logging throughout the DemoService
+- Created JSON templates for better maintainability of demo content
+- Designed the system to be self-healing with automatic detection and recovery
+- Added database-level safeguards through SQL functions and scheduled jobs
 
 ### Feature Considerations
-- Review the implementation of the FSRS algorithm for accuracy
-- Evaluate the AI-powered explanation feature functionality
-- Consider optimizations for CSV import processing
-- Assess the user settings customization options
+- Optimized demo user detection to check both metadata and settings tables
+- Ensured demo users have appropriate default settings (dark theme, etc.)
+- Designed content reset to be non-disruptive to the user experience
+- Made the reset interval configurable through user metadata
 
 ## Documentation Priorities
-- Ensure all core files in the memory bank are complete and accurate
-- Review and update API documentation if needed
-- Document any complex business logic or algorithms
-- Create additional context files for specific features if required
+- Update deployment documentation to reflect the new automated approach
+- Document the DemoService architecture and behavior
+- Create clear instructions for maintaining and updating demo content
+- Ensure all administrative tools and commands are properly documented
 
 ## Current Questions
-- What is the current test coverage of the codebase?
-- Are there any known issues or bugs that need to be addressed?
-- What are the performance characteristics of the API with large card collections?
-- How is the FSRS algorithm implementation validated for accuracy? 
+- Are there any edge cases in the demo user reset process that need handling?
+- What additional monitoring might be helpful for the demo user system?
+- Should we consider different reset intervals for different types of demo users?
+- How can we gather metrics on demo user activity to improve the demonstration experience? 

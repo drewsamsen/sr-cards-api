@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { router } from './routes';
 import { errorHandler } from './middleware/errorHandler';
+import demoService from './services/demoService';
+import logger from './utils/logger';
 
 // Load environment-specific variables
 const envFile = process.env.NODE_ENV === 'production' 
@@ -49,6 +51,10 @@ app.use('/api', router);
 
 // Error handling middleware
 app.use(errorHandler);
+
+// Start DemoService polling to manage demo users
+logger.info('Starting DemoService polling');
+demoService.startPolling();
 
 // Only start the server if we're not in a serverless environment
 if (process.env.NODE_ENV !== 'production') {
