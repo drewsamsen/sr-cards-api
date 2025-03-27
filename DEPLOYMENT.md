@@ -12,25 +12,24 @@ The application is set up for deployment on platforms like Vercel or similar ser
 2. The deployment platform runs the `vercel-build` script from package.json
 3. This script:
    - Builds the TypeScript application (`npm run build`)
-   - Ensures the demo user exists (`node scripts/ensure-demo-user.js`)
+   - Verifies the deployment environment (`node scripts/verify-deployment-env.js`)
 
 ### Demo User in Production
 
-The application includes a special "demo user" that is automatically created in production if it doesn't exist. This demo user:
+The application includes a special "demo user" that is automatically managed by the application's `DemoService`. This service:
 
-- Has the email `demo@example.com` and password `demopassword`
-- Is pre-populated with flashcard decks and cards
-- Has a flag in the database marking it as a demo user
-- Is automatically reset at regular intervals (as specified in the user metadata)
+- Creates a demo user if it doesn't exist (with email `demo@example.com` and password `demopassword`)
+- Pre-populates the demo user with flashcard decks and cards defined in template files
+- Identifies demo users via metadata flags in user settings
+- Automatically resets demo user content at regular intervals (default: 30 minutes)
 
-The demo user is created during the deployment process using the `scripts/ensure-demo-user.js` script. This script:
+The `DemoService` is automatically initialized when the application starts, and it runs a polling process that:
 
-1. Checks if the demo user already exists in the database
-2. If the demo user doesn't exist, creates it with the appropriate metadata
-3. Logs in as the demo user to obtain an authentication token
-4. Creates pre-defined decks and cards for the demo user
+1. Periodically checks for demo users in the database
+2. Determines if any demo users need their content reset based on the reset interval
+3. Resets demo user content when needed by clearing existing decks/cards and recreating fresh ones
 
-This ensures that the demo user is always available in production without requiring manual setup.
+This ensures that the demo user is always available in production without requiring manual setup or maintenance scripts.
 
 ### Environment Variables
 
@@ -43,10 +42,7 @@ Make sure the following environment variables are properly set in your deploymen
 
 ### Database Migrations
 
-Database migrations are managed through Supabase. When deploying, ensure that:
-
-1. All migration files in `supabase/migrations/` are applied to the production database
-2. The `reset_demo_user` function is properly created in the production database
+Database migrations are managed through Supabase. When deploying, ensure that all migration files in `supabase/migrations/` are applied to the production database.
 
 ## Verifying the Deployment
 
@@ -56,4 +52,4 @@ After deployment, you can verify that everything is working correctly by:
 2. Logging in with the demo user credentials to verify the demo user exists
 3. Checking that the demo user has the expected decks and cards
 
-If you encounter any issues, check the deployment logs for error messages. 
+If you encounter any issues, check the application logs for error messages from the `DemoService`. 

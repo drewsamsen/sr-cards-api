@@ -63,12 +63,22 @@ card-api/
 The project includes shared utilities in the `scripts/shared/` directory to reduce code duplication between scripts:
 
 - `api-utils.js` - Common functions for API interactions (deck creation, card creation, etc.)
-- `demo-content.js` - Shared demo user content (decks, cards, and user configuration)
+- `demo-content.js` - Shared demo user content used by development scripts
 - `supabase-utils.js` - Utilities for working directly with the Supabase client
 
-These shared modules are used by:
-- `ensure-demo-user.js` - For ensuring the demo user exists in production
-- `seed-data.js` - For creating test data in the development environment
+These shared modules are used by scripts like `seed-data.js` for creating test data in the development environment.
+
+## Demo User Management
+
+The application includes a `DemoService` that automatically manages demo users:
+
+- Located in `src/services/demoService.ts`
+- Automatically creates demo users if they don't exist
+- Periodically resets demo user content (decks, cards, settings)
+- Uses template files in `src/config/` to define demo user attributes and content
+- Runs automatically whenever the application starts
+
+This service ensures that demo users always have fresh content for demonstration purposes without requiring manual intervention.
 
 ## Getting Started
 
