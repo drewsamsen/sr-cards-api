@@ -119,7 +119,6 @@ During import, the system checks each card against existing cards in the target 
 
 - **Case-insensitive**: "What is JavaScript?" and "what is javascript?" are considered duplicates
 - **Punctuation-agnostic**: "What is JavaScript?" and "What is JavaScript" are considered duplicates
-- **Fuzzy**: Minor differences like typos are still detected as duplicates
 
 **Duplicates in Preview Phase:**
 Duplicate cards are detected during both the preview and confirmation phases:
@@ -477,7 +476,6 @@ During import, the system checks each card against existing cards in the target 
 
 - **Case-insensitive**: "What is JavaScript?" and "what is javascript?" are considered duplicates
 - **Punctuation-agnostic**: "What is JavaScript?" and "What is JavaScript" are considered duplicates
-- **Fuzzy**: Minor differences like typos are still detected as duplicates
 
 **Duplicates in Preview Phase:**
 Duplicate cards are detected during both the preview and confirmation phases:

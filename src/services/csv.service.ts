@@ -650,16 +650,6 @@ export const csvService = {
           let isDuplicate = normalizedExistingCards.has(normalizedFront) || 
                            normalizedExistingCards.has(simplifiedFront);
           
-          // If no exact match, check for fuzzy matches (more expensive)
-          if (!isDuplicate && card.front.length > 3) {
-            isDuplicate = this.hasFuzzyMatch(
-              simplifiedFront, 
-              existingCards.map((c: { id: string, front: string }) => 
-                this.simplifyTextForComparison(this.normalizeTextForComparison(c.front))
-              )
-            );
-          }
-          
           if (isDuplicate) {
             duplicateCount++;
             cardPreview.status = 'invalid';
@@ -671,13 +661,8 @@ export const csvService = {
             } else if (normalizedExistingCards.has(simplifiedFront)) {
               matchingCard = normalizedExistingCards.get(simplifiedFront);
             } else {
-              // Find the fuzzy match
-              matchingCard = existingCards.find((c: { id: string, front: string }) => 
-                this.isFuzzyMatch(
-                  simplifiedFront, 
-                  this.simplifyTextForComparison(this.normalizeTextForComparison(c.front))
-                )
-              );
+              // Since fuzzy matching is removed, matchingCard might be undefined here
+              // The error message will reflect this ("Unknown card")
             }
             
             cardPreview.error = `Duplicate card: Similar to existing card "${matchingCard?.front || 'Unknown card'}"`;
@@ -733,35 +718,6 @@ export const csvService = {
   },
   
   /**
-   * Check if there's a fuzzy match for the text in the array of existing texts
-   * @param text The text to check
-   * @param existingTexts Array of existing texts to compare against
-   * @returns Whether a fuzzy match was found
-   */
-  hasFuzzyMatch(text: string, existingTexts: string[]): boolean {
-    return existingTexts.some(existingText => this.isFuzzyMatch(text, existingText));
-  },
-  
-  /**
-   * Check if two texts are fuzzy matches
-   * @param text1 First text
-   * @param text2 Second text
-   * @returns Whether the texts are fuzzy matches
-   */
-  isFuzzyMatch(text1: string, text2: string): boolean {
-    // For very short strings, only exact matches count
-    if (text1.length < 3 || text2.length < 3) {
-      return text1 === text2;
-    }
-    
-    // Simple approach: check if one text contains the other
-    // or if they're exactly the same after normalization
-    return text1 === text2 || 
-           text1.includes(text2) || 
-           text2.includes(text1);
-  },
-
-  /**
    * Detect duplicates within the parsed data itself
    * @param parsedData The parsed card data
    * @returns Object containing deduplicated data and duplicate details
@@ -805,16 +761,6 @@ export const csvService = {
       else if (simplifiedMap.has(simplifiedFront)) {
         isDuplicate = true;
         originalIndex = simplifiedMap.get(simplifiedFront)!.index;
-      }
-      // Check for fuzzy matches
-      else {
-        for (const [existingFront, existingCard] of simplifiedMap.entries()) {
-          if (this.isFuzzyMatch(simplifiedFront, existingFront)) {
-            isDuplicate = true;
-            originalIndex = existingCard.index;
-            break;
-          }
-        }
       }
       
       if (isDuplicate) {
