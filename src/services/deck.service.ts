@@ -273,46 +273,44 @@ export const deckService = {
       // Get current date for comparison
       const now = new Date().toISOString();
       
-      // Batch query for all new cards across all decks
-      const { data: allNewCards, error: newCardsError } = await supabaseAdmin
-        .from('cards')
-        .select('deck_id, id')
-        .eq('user_id', userId)
-        .eq('state', 0)
-        .in('deck_id', deckIds);
-        
-      if (newCardsError) {
-        console.error('[ERROR] Error fetching new cards:', newCardsError);
-        throw newCardsError;
-      }
-      
-      // Batch query for all review cards across all decks
-      const { data: allReviewCards, error: reviewCardsError } = await supabaseAdmin
-        .from('cards')
-        .select('deck_id, id')
-        .eq('user_id', userId)
-        .gt('state', 0)
-        .lte('due', now)
-        .in('deck_id', deckIds);
-        
-      if (reviewCardsError) {
-        console.error('[ERROR] Error fetching review cards:', reviewCardsError);
-        throw reviewCardsError;
-      }
-      
-      // Count new cards per deck
+      // Instead of a batch query, we'll query new and review cards for each deck individually
+      // This avoids hitting the default row limit (typically 1000 rows) if there are many cards
       const newCardsByDeck = new Map<string, number>();
-      allNewCards?.forEach(card => {
-        const count = newCardsByDeck.get(card.deck_id) || 0;
-        newCardsByDeck.set(card.deck_id, count + 1);
-      });
-      
-      // Count review cards per deck
       const reviewCardsByDeck = new Map<string, number>();
-      allReviewCards?.forEach(card => {
-        const count = reviewCardsByDeck.get(card.deck_id) || 0;
-        reviewCardsByDeck.set(card.deck_id, count + 1);
-      });
+      
+      // Query each deck individually to avoid row limits
+      for (const deckId of deckIds) {
+        // Count new cards for this deck
+        const { count: newCardsCount, error: newError } = await supabaseAdmin
+          .from('cards')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('deck_id', deckId)
+          .eq('state', 0);
+          
+        if (newError) {
+          console.error(`[ERROR] Error counting new cards for deck ${deckId}:`, newError);
+          newCardsByDeck.set(deckId, 0);
+        } else {
+          newCardsByDeck.set(deckId, newCardsCount || 0);
+        }
+        
+        // Count review cards for this deck
+        const { count: reviewCardsCount, error: reviewError } = await supabaseAdmin
+          .from('cards')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('deck_id', deckId)
+          .gt('state', 0)
+          .lte('due', now);
+          
+        if (reviewError) {
+          console.error(`[ERROR] Error counting review cards for deck ${deckId}:`, reviewError);
+          reviewCardsByDeck.set(deckId, 0);
+        } else {
+          reviewCardsByDeck.set(deckId, reviewCardsCount || 0);
+        }
+      }
       
       // Process each deck
       const processedDecks = decks.map(deck => {
@@ -345,7 +343,7 @@ export const deckService = {
           const newCardsRemaining = Math.max(0, dailyLimits.newCardsLimit - reviewCounts.newCardsCount);
           const reviewCardsRemaining = Math.max(0, dailyLimits.reviewCardsLimit - reviewCounts.reviewCardsCount);
           
-          // Get available cards from our batch queries
+          // Get available cards from our individual deck queries
           const availableNewCards = newCardsByDeck.get(deck.id) || 0;
           const availableReviewCards = reviewCardsByDeck.get(deck.id) || 0;
           
